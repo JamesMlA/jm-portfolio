@@ -20,31 +20,32 @@ Pushing to `main` triggers a redeploy (`autoDeploy: true`).
 
 ## Domain
 
-`ancordss.me.uk` is attached to the application with `certificateType: letsencrypt`.
-**DNS is not yet pointed at this server**, which is the one remaining step.
+`ancordss.me.uk` is attached to the application with `certificateType: letsencrypt`
+and is **live**. Cloudflare fronts the domain (`elliott.ns.cloudflare.com`,
+`liz.ns.cloudflare.com`) with the apex proxied (orange cloud) to `144.217.164.56`.
 
-Cloudflare fronts the domain (`elliott.ns.cloudflare.com`, `liz.ns.cloudflare.com`).
-The apex has no origin configured for this app, so Cloudflare answers `522`.
-Note that `blog.ancordss.me.uk` is GitHub Pages — moving the apex does not affect it.
+TLS today is Cloudflare's edge certificate (Google Trust Services). The origin has
+its own Let's Encrypt certificate, issued 2026-09-15, so **Full (strict)** works.
 
-### To finish
+Two things worth knowing if this ever needs re-doing:
 
-In the Cloudflare DNS dashboard for `ancordss.me.uk`:
+- **Issue the certificate while the record is DNS-only.** The HTTP-01 challenge has
+  to reach Traefik. When the record was pointed for the first time, the origin still
+  served `TRAEFIK DEFAULT CERT` and the edge returned `526`; Traefik was in ACME
+  backoff from the earlier mispointed attempt. Deleting and recreating the domain in
+  Dokploy forced a fresh challenge, which succeeded in under a minute.
+- **Expect a short `522` window right after the certificate flips.** Cloudflare's
+  first request to a cold origin can fail; it clears on its own within seconds.
 
-1. Add an `A` record: name `@`, content `144.217.164.56`, **Proxy status: DNS only** (grey cloud).
-2. Wait for propagation, then confirm Traefik issues the certificate:
-   ```bash
-   echo | openssl s_client -connect 144.217.164.56:443 -servername ancordss.me.uk 2>/dev/null \
-     | openssl x509 -noout -subject -issuer -dates
-   ```
-   Expect `CN=ancordss.me.uk` issued by Let's Encrypt, **not** `CN=TRAEFIK DEFAULT CERT`.
-3. Once the certificate is valid, the proxy can be switched back on (orange cloud).
-   Keep SSL/TLS mode on **Full (strict)**; `Flexible` would cause a redirect loop,
-   since Traefik already 301s HTTP to HTTPS.
+Verify issuance:
+```bash
+echo | openssl s_client -connect 144.217.164.56:443 -servername ancordss.me.uk 2>/dev/null \
+  | openssl x509 -noout -subject -issuer -dates
+```
+Expect `CN=ancordss.me.uk` from Let's Encrypt, **not** `CN=TRAEFIK DEFAULT CERT`.
 
-Why DNS-only first: Let's Encrypt's HTTP-01 challenge must reach Traefik directly.
-Proxying during issuance can fail the challenge and leave the origin serving the
-default certificate.
+`www.ancordss.me.uk` is not configured and does not resolve. Add a `CNAME` for `www`
+to `ancordss.me.uk` if that is wanted.
 
 ## Redeploying by hand
 
@@ -65,7 +66,15 @@ curl -s  https://<host>/index.md | head -40
 BASE_URL=https://<host> python3 scripts/agent-check.py
 ```
 
+## Live
+
+https://ancordss.me.uk — verified 2026-09-15: all endpoints `200`, real `404`,
+9/9 AgentReady requirements, canonical/OG/sitemap/llms.txt pointing at the domain.
+
 ## Before this is a public launch
 
 - **Rotate the Dokploy API key.** The current key was exposed in shell history
   output. Revoke it in the panel and issue a new one.
+- Decide whether the temporary `*.sslip.io` domain should stay attached. It is
+  harmless (it resolves straight to the origin, bypassing Cloudflare) but it is
+  indexed nowhere and serves a duplicate of the site.
