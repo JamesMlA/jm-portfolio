@@ -9,7 +9,7 @@ export const site = {
   location: "Guatemala",
   timeZone: "America/Guatemala",
   email: "maradiaga.l.james@gmail.com",
-  url: "https://jamesmaradiaga.dev",
+  url: "https://ancordss.me.uk",
   links: {
     github: "https://github.com/Ancordss",
     linkedin: "https://www.linkedin.com/in/jamesmaradiaga",
