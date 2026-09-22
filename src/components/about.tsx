@@ -1,125 +1,87 @@
 "use client";
 
-import { ArrowDownToLine, Layers, Sparkles } from "lucide-react";
 import { useI18n } from "./i18n";
-import { Chip, PanelBar, Reveal, Section, SectionHead, StatusDot } from "./ui";
+import { Headline, Kicker, Lead, Reveal, Section, Tag } from "./ui";
 
 /**
- * Editorial two-column: the left rail carries the identity and the philosophy
- * directives and stays with the reader; the right column is the reading track
- * — prose with display first lines, then the live checklist.
+ * The story beat: who I am beneath the product. Reading column first, then
+ * the tools, the three engineering principles as a plain feature grid, and a
+ * quiet list of what is happening right now.
  */
 export function About() {
   const { d } = useI18n();
-  // "01 — About" → the numeral rides in the Eyebrow index slot.
-  const [index, eyebrow] = d.about.eyebrow.split(" — ");
+  // "01 — About" → the label tail rides the kicker; no numerals up here.
+  const kicker = d.about.eyebrow.split(" — ")[1] ?? d.about.eyebrow;
 
-  const directives = [
-    {
-      n: "01",
-      title: d.about.principles.automate.title,
-      body: d.about.principles.automate.body,
-      Icon: Sparkles,
-    },
-    {
-      n: "02",
-      title: d.about.principles.reliability.title,
-      body: d.about.principles.reliability.body,
-      Icon: Layers,
-    },
-    {
-      n: "03",
-      title: d.about.principles.simple.title,
-      body: d.about.principles.simple.body,
-      Icon: ArrowDownToLine,
-    },
+  const principles = [
+    d.about.principles.automate,
+    d.about.principles.reliability,
+    d.about.principles.simple,
   ];
 
   return (
-    <Section id="about">
-      <div className="grid gap-14 lg:grid-cols-12 lg:gap-x-16">
-        {/* ---------- left rail: identity + engineering philosophy ---------- */}
-        <div className="lg:col-span-5">
-          <div className="lg:sticky lg:top-24">
-            <Reveal className="reveal-mask">
-              <SectionHead
-                index={index}
-                eyebrow={eyebrow ?? d.about.eyebrow}
-                title={d.about.title}
-                lead={d.about.lead}
-              />
-            </Reveal>
+    <Section id="about" tone="light">
+      <Reveal>
+        <Kicker>{kicker}</Kicker>
+      </Reveal>
+      <Reveal delay={70}>
+        <Headline>{d.about.title}</Headline>
+      </Reveal>
+      <Reveal delay={140}>
+        <Lead className="max-w-[46rem]">{d.about.lead}</Lead>
+      </Reveal>
 
-            <Reveal delay={120} className="mt-12">
-              <p className="label-xs">{d.about.philosophyTitle}</p>
-            </Reveal>
-
-            <ul className="mt-5 grid gap-3">
-              {directives.map(({ n, title, body, Icon }, i) => (
-                <Reveal
-                  as="li"
-                  key={n}
-                  delay={160 + i * 90}
-                  className="reveal-x"
-                >
-                  <article className="panel grain ticks volt-rim p-5">
-                    <div className="flex items-baseline gap-3">
-                      <span className="numeral text-2xl leading-none">{n}</span>
-                      <h3 className="font-display text-lg tracking-tight text-ink">
-                        {title}
-                      </h3>
-                      <Icon
-                        aria-hidden
-                        className="ml-auto size-4 shrink-0 self-center text-dim"
-                        strokeWidth={1.75}
-                      />
-                    </div>
-                    <p className="mt-2.5 text-[0.85rem] leading-relaxed text-mute">
-                      {body}
-                    </p>
-                  </article>
-                </Reveal>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        {/* ---------- right: the reading track ---------- */}
-        <div className="lg:col-span-7">
-          <div className="space-y-5">
-            {d.about.body.map((paragraph, i) => (
-              <Reveal key={i} delay={i * 90}>
-                <p className="max-w-2xl text-[0.95rem] leading-[1.75] text-mute first-line:display-wide first-line:text-[1.2em] first-line:leading-[1.45] first-line:text-ink">
-                  {paragraph}
-                </p>
-              </Reveal>
-            ))}
-          </div>
-
-          {/* the checklist someone would tape to the console */}
-          <Reveal delay={200} className="mt-12 max-w-2xl">
-            <div className="panel grain ticks overflow-hidden">
-              <PanelBar title={d.about.nowTitle} />
-              <ul className="divide-y divide-line">
-                {d.about.now.map((item, i) => (
-                  <li key={i} className="flex items-start gap-3 px-4 py-3">
-                    <StatusDot pulse={false} className="mt-1.5 shrink-0" />
-                    <span className="font-mono text-[0.8rem] leading-relaxed text-mute">
-                      {item}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <div className="flex flex-wrap gap-1.5 border-t border-line px-4 py-3.5">
-                {d.about.stack.map((t) => (
-                  <Chip key={t} tone="signal">
-                    {t}
-                  </Chip>
-                ))}
-              </div>
-            </div>
+      {/* ---------- the reading column ---------- */}
+      <div className="mt-14 max-w-[42rem] space-y-6">
+        {d.about.body.map((paragraph, i) => (
+          <Reveal key={i} delay={i * 80}>
+            <p className="text-[17px] leading-[1.7]">{paragraph}</p>
           </Reveal>
-        </div>
+        ))}
+      </div>
+
+      {/* ---------- the everyday stack ---------- */}
+      <Reveal delay={80} className="mt-10">
+        <ul className="flex flex-wrap gap-2">
+          {d.about.stack.map((item) => (
+            <li key={item}>
+              <Tag>{item}</Tag>
+            </li>
+          ))}
+        </ul>
+      </Reveal>
+
+      {/* ---------- engineering philosophy ---------- */}
+      <div className="mt-28">
+        <Reveal>
+          <Kicker>{d.about.philosophyTitle}</Kicker>
+        </Reveal>
+        <ul className="mt-10 grid gap-12 sm:grid-cols-2 lg:grid-cols-3">
+          {principles.map((principle, i) => (
+            <Reveal as="li" key={principle.title} delay={i * 90}>
+              <h3 className="text-[21px] font-semibold tracking-tight">
+                {principle.title}
+              </h3>
+              <p className="mt-4 max-w-[24rem] text-[15px] leading-relaxed text-soft">
+                {principle.body}
+              </p>
+            </Reveal>
+          ))}
+        </ul>
+      </div>
+
+      {/* ---------- right now ---------- */}
+      <div className="mt-28">
+        <Reveal>
+          <Kicker>{d.about.nowTitle}</Kicker>
+        </Reveal>
+        <ul className="mt-8 grid gap-x-16 gap-y-4 sm:grid-cols-2">
+          {d.about.now.map((item, i) => (
+            <Reveal as="li" key={item} delay={i * 60}>
+              <p className="text-[17px] leading-relaxed text-soft">{item}</p>
+            </Reveal>
+          ))}
+        </ul>
       </div>
     </Section>
   );

@@ -1,36 +1,29 @@
 # jamesmaradiaga.dev
 
 Personal engineering portfolio — Lead DevOps Engineer, cloud infrastructure, SRE, MLOps.
-Redesigned as **Mission Control**: dark void, phosphor-mint signal, instrument
-panels, and real rendered motion.
+Designed as an Apple-style product-launch story: huge type, alternating
+white/black stages, big case-study shots, restrained motion.
 
 ## Stack
 
 - **Next.js 16** (App Router, React 19, Turbopack)
 - **TypeScript**, strict
-- **Tailwind CSS v4** — design tokens declared in `@theme` inside `src/app/globals.css`
-- **lucide-react** icons; brand glyphs (GitHub, LinkedIn) inlined in `src/components/brand-icons.tsx`
-- **Rendered layers** (the three meanings of "render" on this site):
-  - **WebGL hero scene** — `src/components/render/hero-scene.tsx` (three.js +
-    `@react-three/fiber`): terrain heightfield sampled from the value-noise in
-    `src/lib/contours.ts`, luminous contour bands, radar sweep, particle dust,
-    drifting camera with pointer parallax
-  - **Shader signal field** — `src/components/render/signal-field.tsx`, a
-    self-contained raw WebGL1 fullscreen quad (`flow`/`grid` variants) behind
-    the skills section
-  - **Generated raster posters** — `scripts/generate-renders.mjs` builds one
-    deterministic, text-free poster per case study (`public/renders/<id>.png`,
-    1600×1000, seeded SVG → PNG via `@resvg/resvg-js`); run by `prebuild`
-- **Motion**: CSS + SVG for entrances and instrument animation (`motion` for
-  the scroll-drawn experience spine). Everything honors
-  `prefers-reduced-motion`; canvases render exactly one static frame.
+- **Tailwind CSS v4** — design tokens and tone system in `src/app/globals.css`
+- **System font stack** (`-apple-system`, SF Pro) — true Apple type on Apple
+  devices, zero webfont cost and zero layout shift everywhere else
+- **motion** — the settle-on-scroll product-shot effect (`useScroll` +
+  `useTransform`), static under `prefers-reduced-motion`
+- **@resvg/resvg-js** — `scripts/generate-renders.mjs` builds one deterministic,
+  text-free poster per case study (`public/renders/<id>.png`, 1600×1000) and
+  the favicon; run by `prebuild`
+- **lucide-react** icons; brand glyphs in `src/components/brand-icons.tsx`
 
 ## Commands
 
 ```bash
 npm run dev      # local dev
 npm run build    # production build (static), regenerates posters first
-npm run renders  # regenerate public/renders/*.png (deterministic)
+npm run renders  # regenerate public/renders/*.png + favicon (deterministic)
 npm start        # serve the build
 npm run lint     # eslint
 npx tsc --noEmit # typecheck
@@ -41,25 +34,26 @@ npx tsc --noEmit # typecheck
 ```
 src/
   app/
-    layout.tsx          # fonts, metadata, shell (dark-only)
-    page.tsx            # section composition (server component)
+    layout.tsx          # system-font shell, metadata, dark-bar page
+    page.tsx            # story-beat composition (server component)
     opengraph-image.tsx # generated OG card
     robots.ts, sitemap.ts, icon.svg
   components/
     i18n.tsx            # EN/ES store (useSyncExternalStore) + localStorage
-    ui.tsx              # Section, SectionHead, Chip, PanelBar, ActionLink…
-    nav.tsx             # fixed console bar + scroll telemetry hairline
-    hero.tsx            # identity + statement over the WebGL terrain
-    hero-terminal.tsx   # typed "mission log" (labelled visual story)
-    topology.tsx        # animated delivery-pipeline schematic
-    diagram.tsx         # architecture schematics for case studies
-    render/
-      hero-scene.tsx    # R3F terrain + radar + dust (client-only, lazy)
-      signal-field.tsx  # raw WebGL shader field (client-only)
-    experience.tsx      # timeline with scroll-drawn spine
-    projects.tsx        # case-study rows + poster plates + dossier modal
-    skills.tsx          # subsystem panels over the signal field
-    about.tsx, thinking.tsx, github-section.tsx, contact.tsx, footer.tsx
+    ui.tsx              # Section, Kicker, Headline, Lead, TextLink, Pill,
+                        # Tag, SpecRow, Stat, Reveal
+    nav.tsx             # 44px frosted bar, tone-aware (dark/light glass)
+    hero.tsx            # launch stage: name, headline, links, product shot
+    about.tsx           # prose + principles feature grid + now list
+    experience.tsx      # career as a tech-spec sheet
+    projects.tsx        # case studies as alternating story + poster rows
+    skills.tsx          # spec groups: skill name + how it is used
+    thinking.tsx        # principles as statement cards
+    github-section.tsx  # stats, contribution grid, repo cards
+    contact.tsx         # closing CTA + interests
+    footer.tsx          # fat footer incl. the "For agents" block
+    reveal.tsx          # scroll entrance primitive (AR-READ-01 gated)
+    providers.tsx, brand-icons.tsx
   content/
     site.ts   # identity, links, section registry
     en.ts     # English dictionary (default)
@@ -67,29 +61,41 @@ src/
     data.ts   # experience, skills, projects, principles, GitHub fallbacks
   lib/
     github.ts   # build-time GitHub API fetch with static fallback
-    contours.ts # value noise (contour generator + hero heightfield sampler)
     agent-docs.ts, structured-data.ts, utils.ts
 scripts/
-  generate-renders.mjs  # seeded poster generator (prebuild)
+  generate-renders.mjs  # seeded poster + favicon generator (prebuild)
   agent-check.py        # AgentReady conformance check
 ```
+
+## Design system
+
+Every section is a `Section` with one of three tones (`tone-light` white,
+`tone-gray` #f5f5f7, `tone-dark` black) — the tone sets `--text`, `--text-soft`,
+`--link` and `--hairline`, so beats alternate like apple.com's long pages. The
+global bar reads the tone of the section under it and switches between dark and
+light frosted glass. Link blue is #0071e3 (light) / #2997ff (dark). Type is
+Apple's scale: tiny colored kicker, huge tight headline (`display-hero`), 21px
+soft lead, 17px body, 12px footer.
+
+Imagery is the case-study posters (seeded, text-free, generated at build) treated
+as product shots — rounded, shadowed, settling from 1.04× to 1× on scroll.
 
 ## Content rules
 
 Nothing on this site is invented. Experience, technologies and repositories come
 from verified public sources; the GitHub section is fetched live from the GitHub
 API at build time (revalidated every 12 hours) and degrades to static values if
-the API is unavailable. Decorative renders (hero scene, posters, shader field)
-carry no factual claims and are `aria-hidden`; architectural diagrams are
-explicitly labelled as illustrative. If you add a claim, add the source.
+the API is unavailable. Decorative art carries no factual claims and is
+`aria-hidden`. If you add a claim, add the source.
 
 ## i18n
 
 English loads first and is the SSR language. A stored preference (`jm.lang`) is
 applied before paint, and `useI18n()` reads that state back, so switching is
 instant with no hydration mismatch. Technology names, acronyms and job titles are
-intentionally identical in both languages. The interface is dark-only (the light
-theme and its toggle were removed in the Mission Control redesign).
+intentionally identical in both languages. Dictionary keys are pruned to exactly
+what the surface renders — `es.ts` is type-locked to `en.ts` through `Dictionary`,
+so the two cannot drift.
 
 ## Motion and accessibility
 
@@ -97,24 +103,10 @@ theme and its toggle were removed in the Mission Control redesign).
   behind `@media (scripting: enabled)` so fetch-only readers (agents, text
   browsers, JS off) always receive the content (AgentReady AR-READ-01). Verify
   no-JS views after changing it.
-- `prefers-reduced-motion: reduce` neutralizes every animation and pins both
-  canvases to a single static frame — which is also the deterministic
-  composition every load shares.
-- Canvases mount after first paint (`next/dynamic`, `ssr: false`) and pause when
-  the tab is hidden or the layer is off screen.
-
-## Backdrop
-
-The hero's synthetic landscape is rendered, not drawn: `lib/contours.ts` value
-noise is sampled into a terrain heightfield with luminous contour bands, a radar
-sweep and dust. The flat contour-map SVG (`terrain-field.tsx`) is gone. Two
-invariants if you touch the render layer:
-
-- Keep the scene decorative: `aria-hidden`, `pointer-events: none`, no network,
-  no layout shift.
-- The kit of three.js objects is a mutable resource: JSX reads the `useKit()`
-  handle, uniform writes go through the `kitRef` handle (React's compiler rules
-  treat render-derived values as read-only). `npm run lint` enforces this.
+- `prefers-reduced-motion: reduce` neutralizes every animation and pins the
+  product-shot scroll effect to its rest state.
+- The frosted bar keeps 12px links with generous hit areas; text links carry an
+  `sr-only` "opens in a new tab" note via `d.a11y.external`.
 
 ## Agent readability
 

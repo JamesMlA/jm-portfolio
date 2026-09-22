@@ -1,94 +1,55 @@
 "use client";
 
-import { useState } from "react";
 import { useI18n } from "./i18n";
-import { Chip, Reveal, Section, SectionHead } from "./ui";
+import { Headline, Kicker, Lead, Reveal, Section, Tag } from "./ui";
 import { principles } from "@/content/data";
-import { cx } from "@/lib/utils";
 
 /**
- * Principles as directive cards instead of a force graph: focus one and the
- * cards it does not pull on recede, so the coupling reads without drawing it.
- * Hover previews the coupling, a click pins it for keyboard and touch.
+ * The mental model as static statements: each principle, what it changes, and
+ * what it pulls on. No cross-highlighting — the coupling reads in the words.
  */
 export function Thinking() {
   const { d, l } = useI18n();
-  // "05 — Mental model" → the numeral rides in the Eyebrow index slot.
-  const [index, eyebrow] = d.thinking.eyebrow.split(" — ");
-
-  const [hover, setHover] = useState<string | null>(null);
-  const [pinned, setPinned] = useState<string | null>(null);
-  const active = hover ?? pinned;
-  const activePrinciple = principles.find((p) => p.id === active);
+  // "05 — Mental model" → the label tail rides the kicker; no numerals up here.
+  const kicker = d.thinking.eyebrow.split(" — ")[1] ?? d.thinking.eyebrow;
 
   return (
-    <Section id="thinking" className="bg-abyss">
-      <Reveal className="reveal-mask">
-        <SectionHead
-          index={index}
-          eyebrow={eyebrow ?? d.thinking.eyebrow}
-          title={d.thinking.title}
-          lead={d.thinking.lead}
-          wide
-        />
+    <Section id="thinking" tone="light">
+      <Reveal>
+        <Kicker>{kicker}</Kicker>
+      </Reveal>
+      <Reveal delay={70}>
+        <Headline>{d.thinking.title}</Headline>
+      </Reveal>
+      <Reveal delay={140}>
+        <Lead className="max-w-[46rem]">{d.thinking.lead}</Lead>
       </Reveal>
 
-      <Reveal delay={80} className="mt-4">
-        <p className="font-mono text-2xs tracking-wide text-faint">
-          {d.thinking.focusHint}
-        </p>
-      </Reveal>
+      {/* ---------- the statements ---------- */}
+      <ul className="mt-16 grid gap-14 sm:grid-cols-2">
+        {principles.map((principle, i) => (
+          <Reveal as="li" key={principle.id} delay={i * 90}>
+            <article className="border-t hairline pt-6">
+              <h3 className="text-[21px] font-semibold tracking-tight text-main">
+                {l(principle.label)}
+              </h3>
 
-      <ul className="mt-12 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-        {principles.map((p, i) => {
-          const isActive = p.id === active;
-          const isLit =
-            active === null || isActive || activePrinciple?.pulls.includes(p.id);
+              <p className="mt-8 text-[13px] text-soft">{d.thinking.detail}</p>
+              <p className="mt-2 text-[15px] leading-relaxed text-soft">
+                {l(principle.detail)}
+              </p>
 
-          return (
-            <Reveal as="li" key={p.id} delay={i * 70} className="h-full">
-              <button
-                type="button"
-                aria-pressed={pinned === p.id}
-                onMouseEnter={() => setHover(p.id)}
-                onMouseLeave={() => setHover(null)}
-                onFocus={() => setHover(p.id)}
-                onBlur={() => setHover(null)}
-                onClick={() => setPinned((v) => (v === p.id ? null : p.id))}
-                className={cx(
-                  "panel grain ticks volt-rim flex h-full w-full flex-col p-6 text-left transition-opacity duration-300",
-                  isLit ? "opacity-100" : "opacity-35",
-                )}
-              >
-                <div className="flex items-baseline gap-3">
-                  <span aria-hidden className="numeral text-3xl leading-none">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <h3 className="font-display text-lg tracking-tight text-ink">
-                    {l(p.label)}
-                  </h3>
-                </div>
-
-                <p className="label-xs mt-5">{d.thinking.detail}</p>
-                <p className="mt-2 text-[0.85rem] leading-relaxed text-mute">
-                  {l(p.detail)}
-                </p>
-
-                <p className="label-xs mt-5">{d.thinking.related}</p>
-                <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  {p.pulls.map((id) => (
-                    <Chip
-                      key={id}
-                      tone={isActive ? "signal" : "neutral"}
-                    >
-                      {l(principles.find((x) => x.id === id)!.label)}
-                    </Chip>
-                  ))}
-                </div>
-              </button>
-            </Reveal>
-          );
-        })}
+              <p className="mt-8 text-[13px] text-soft">{d.thinking.related}</p>
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {principle.pulls.map((id) => (
+                  <li key={id}>
+                    <Tag>{l(principles.find((x) => x.id === id)!.label)}</Tag>
+                  </li>
+                ))}
+              </ul>
+            </article>
+          </Reveal>
+        ))}
       </ul>
     </Section>
   );

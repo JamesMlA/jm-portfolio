@@ -1,262 +1,178 @@
 "use client";
 
-import type { ComponentType, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useI18n } from "./i18n";
 import { cx } from "@/lib/utils";
 
 export { Reveal } from "./reveal";
 
-/** Lucide icons and the inline brand glyphs both satisfy this. */
-export type IconComponent = ComponentType<{
+/**
+ * A story section: one tone (light | gray | dark), one measure. Text columns
+ * sit in Apple's 980px grid; visuals may ask for more with `wide`.
+ */
+export function Section({
+  id,
+  tone = "light",
+  children,
+  className,
+  wide = false,
+}: {
+  id?: string;
+  tone?: "light" | "gray" | "dark";
+  children: ReactNode;
   className?: string;
-  strokeWidth?: number;
-}>;
+  wide?: boolean;
+}) {
+  return (
+    <section
+      id={id}
+      className={cx(
+        "tone-light",
+        tone === "gray" && "tone-gray",
+        tone === "dark" && "tone-dark",
+        "relative overflow-hidden px-6 py-24 sm:px-8 md:py-32",
+        className,
+      )}
+    >
+      <div
+        className={cx(
+          "mx-auto w-full",
+          wide ? "max-w-[1200px]" : "max-w-[980px]",
+        )}
+      >
+        {children}
+      </div>
+    </section>
+  );
+}
 
-export function Eyebrow({
-  index,
+/** The small colored label above a story headline. */
+export function Kicker({
   children,
   className,
 }: {
-  index?: string;
   children: ReactNode;
   className?: string;
 }) {
   return (
-    <p className={cx("label-xs flex items-center gap-3", className)}>
-      {index ? (
-        <span aria-hidden className="numeral text-base leading-none text-signal/70">
-          {index}
-        </span>
-      ) : (
-        <span
-          aria-hidden
-          className="size-1.5 rounded-full bg-signal shadow-[0_0_10px_var(--color-volt)]"
-        />
+    <p className={cx("kicker text-link", className)}>{children}</p>
+  );
+}
+
+/** The launch headline. */
+export function Headline({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <h2
+      className={cx(
+        "display-hero mt-2 text-[clamp(2.4rem,6vw,4.5rem)]",
+        className,
       )}
+    >
+      {children}
+    </h2>
+  );
+}
+
+/** Supporting line under a headline — 21–28px soft grey. */
+export function Lead({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <p className={cx("mt-4 text-[clamp(1.15rem,2.2vw,1.75rem)] leading-snug text-soft", className)}>
       {children}
     </p>
   );
 }
 
-export function SectionHead({
-  index,
-  eyebrow,
-  title,
-  lead,
-  align = "left",
-  wide = false,
-}: {
-  index?: string;
-  eyebrow: string;
-  title: string;
-  lead?: string;
-  align?: "left" | "center";
-  wide?: boolean;
-}) {
-  const centered = align === "center";
-  return (
-    <header
-      className={cx(
-        "flex flex-col gap-5",
-        centered && "items-center text-center",
-      )}
-    >
-      <div
-        className={cx(
-          "flex w-full items-center gap-4",
-          centered && "justify-center",
-        )}
-      >
-        <Eyebrow index={index}>{eyebrow}</Eyebrow>
-        <span
-          aria-hidden
-          className="h-px flex-1 bg-gradient-to-r from-line-hi to-transparent"
-        />
-      </div>
-      <h2
-        className={cx(
-          "display-wide text-[clamp(2.1rem,5vw,3.6rem)] leading-[1.02]",
-          wide && "text-[clamp(2.4rem,6vw,4.4rem)]",
-        )}
-      >
-        {title}
-      </h2>
-      {lead ? (
-        <p
-          className={cx(
-            "max-w-2xl text-[0.98rem] leading-relaxed text-mute text-pretty",
-            centered && "mx-auto",
-          )}
-        >
-          {lead}
-        </p>
-      ) : null}
-    </header>
-  );
-}
-
-export function StatusDot({
-  tone = "signal",
-  pulse = true,
-  className,
-}: {
-  tone?: "signal" | "amber" | "rose";
-  pulse?: boolean;
-  className?: string;
-}) {
-  const fill =
-    tone === "amber" ? "bg-amber" : tone === "rose" ? "bg-rose" : "bg-signal";
-  return (
-    <span className={cx("relative inline-flex size-2", className)}>
-      {pulse ? (
-        <span
-          aria-hidden
-          className={cx(
-            "absolute inset-0 animate-pulse-ring rounded-full opacity-60",
-            fill,
-          )}
-        />
-      ) : null}
-      <span className={cx("relative size-2 rounded-full", fill)} />
-    </span>
-  );
-}
-
-const chipTone = {
-  neutral: "border-line-hi bg-panel/60 text-mute",
-  signal: "border-signal/30 bg-signal-deep/60 text-signal-text",
-  amber: "border-amber/30 bg-amber/10 text-amber",
-  azure: "border-azure/30 bg-azure/10 text-azure",
-} as const;
-
-export function Chip({
-  children,
-  tone = "neutral",
-  className,
-}: {
-  children: ReactNode;
-  tone?: keyof typeof chipTone;
-  className?: string;
-}) {
-  return (
-    <span
-      className={cx(
-        "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono text-2xs tracking-wide",
-        chipTone[tone],
-        className,
-      )}
-    >
-      {children}
-    </span>
-  );
-}
-
-/** Instrument panel header — phosphor dots, mono title, optional readout. */
-export function PanelBar({
-  title,
-  icon: Icon,
-  right,
-  meta,
-}: {
-  title: string;
-  icon?: IconComponent;
-  right?: ReactNode;
-  meta?: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 border-b border-line px-4 py-3">
-      <span aria-hidden className="flex items-center gap-1">
-        <span className="size-1.5 rounded-full bg-signal/80" />
-        <span className="size-1.5 rounded-full bg-amber/50" />
-        <span className="size-1.5 rounded-full bg-rose/40" />
-      </span>
-      {Icon ? (
-        <Icon className="size-3.5 text-dim" strokeWidth={1.6} />
-      ) : null}
-      <p className="min-w-0 truncate font-mono text-2xs tracking-wide text-ink">
-        {title}
-      </p>
-      {meta ? (
-        <span className="hidden font-mono text-2xs text-faint sm:inline">
-          {meta}
-        </span>
-      ) : null}
-      {right ? <div className="ml-auto flex shrink-0 items-center gap-2">{right}</div> : null}
-    </div>
-  );
-}
-
-const actionVariant = {
-  primary:
-    "border-signal/40 bg-signal-deep text-signal-text hover:border-signal hover:bg-signal/10",
-  secondary:
-    "border-line-hi text-ink hover:border-signal/50 hover:text-signal",
-  ghost: "border-transparent text-dim hover:text-signal",
-} as const;
-
-export function ActionLink({
+/** Text link with a chevron that slides on hover. */
+export function TextLink({
   href,
   children,
-  icon: Icon,
-  variant = "primary",
   external,
-  onClick,
   className,
 }: {
   href: string;
   children: ReactNode;
-  icon?: IconComponent;
-  variant?: keyof typeof actionVariant;
   external?: boolean;
-  onClick?: () => void;
   className?: string;
 }) {
   const { d } = useI18n();
   return (
     <a
       href={href}
-      onClick={onClick}
       target={external ? "_blank" : undefined}
       rel={external ? "noreferrer noopener" : undefined}
       className={cx(
-        "group volt-rim inline-flex min-h-6 items-center gap-2 rounded-lg border px-4.5 py-3 font-mono text-xs tracking-wide transition-colors duration-300",
-        actionVariant[variant],
+        "group inline-flex items-center gap-0.5 py-1 text-[17px] text-link",
         className,
       )}
     >
       {children}
-      {Icon ? (
-        <Icon
-          className="size-3.5 transition-transform duration-300 group-hover:translate-x-1"
-          strokeWidth={1.75}
-        />
-      ) : null}
+      <span
+        aria-hidden
+        className="transition-transform duration-300 group-hover:translate-x-0.5"
+      >
+        {"›"}
+      </span>
       {external ? <span className="sr-only">{d.a11y.external}</span> : null}
     </a>
   );
 }
 
-/** Small section wrapper enforcing the shared horizontal rhythm. */
-export function Section({
-  id,
+/** Filled action pill. */
+export function Pill({
+  href,
   children,
   className,
-  bleed = false,
 }: {
-  id?: string;
+  href: string;
   children: ReactNode;
   className?: string;
-  bleed?: boolean;
 }) {
   return (
-    <section id={id} className={cx("relative border-t border-line", className)}>
-      <div
-        className={cx(
-          !bleed && "mx-auto w-full max-w-[76rem] px-5 py-16 sm:px-8 md:py-24",
-        )}
-      >
-        {children}
-      </div>
-    </section>
+    <a href={href} className={cx("pill", className)}>
+      {children}
+    </a>
+  );
+}
+
+/** Quiet product chip — tech names, tags, focus areas. */
+export function Tag({ children, className }: { children: ReactNode; className?: string }) {
+  return <span className={cx("tag", className)}>{children}</span>;
+}
+
+/** Big number with its label — the tech-spec readout. */
+export function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="text-center">
+      <p className="display-hero text-[clamp(1.8rem,4vw,2.75rem)]">{value}</p>
+      <p className="mt-1 text-[13px] text-soft">{label}</p>
+    </div>
+  );
+}
+
+/** One row of a spec sheet: label left, value right. */
+export function SpecRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="grid gap-1 border-b py-5 last:border-b-0 hairline sm:grid-cols-[10rem_1fr] sm:gap-8">
+      <p className="text-[15px] font-semibold text-soft">{label}</p>
+      <div className="text-[17px] leading-relaxed">{children}</div>
+    </div>
   );
 }

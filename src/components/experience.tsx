@@ -1,223 +1,134 @@
 "use client";
 
-import { useRef } from "react";
-import { motion, useReducedMotion, useScroll, useSpring } from "motion/react";
-import { ArrowUpRight, Building2, MapPin } from "lucide-react";
 import { useI18n } from "./i18n";
-import { Chip, Reveal, Section, SectionHead } from "./ui";
+import { Headline, Kicker, Lead, Reveal, Section, Tag, TextLink } from "./ui";
 import { timeline } from "@/content/data";
 import { site } from "@/content/site";
 import { cx } from "@/lib/utils";
 
-/** Visual weight per role — the rail recedes as the work gets older. */
+/** Visual weight per role — the sheet recedes as the work gets older. */
 const weight = {
   lead: {
-    card: "p-6 sm:p-8 border-line-hi",
-    title: "text-xl sm:text-2xl",
-    body: "text-[0.92rem]",
-    dot: "size-3",
+    row: "py-12",
+    company: "text-[clamp(2rem,4vw,2.75rem)]",
+    summary: "text-[19px]",
   },
   major: {
-    card: "p-5 sm:p-6",
-    title: "text-lg sm:text-xl",
-    body: "text-[0.87rem]",
-    dot: "size-2.5",
+    row: "py-10",
+    company: "text-[clamp(1.6rem,2.6vw,2rem)]",
+    summary: "text-[17px]",
   },
   mid: {
-    card: "p-5",
-    title: "text-base sm:text-lg",
-    body: "text-[0.83rem]",
-    dot: "size-2",
+    row: "py-8",
+    company: "text-[21px]",
+    summary: "text-[17px]",
   },
   small: {
-    card: "p-4 sm:p-5",
-    title: "text-sm sm:text-base",
-    body: "text-[0.8rem]",
-    dot: "size-1.5",
+    row: "py-6",
+    company: "text-[17px]",
+    summary: "text-[15px]",
   },
 } as const;
 
 /**
- * A vertical timeline on a hairline spine. The spine is a scroll instrument:
- * a signal line draws over the hairline as the entries go by, and stands
- * fully drawn for anyone who asked for reduced motion.
+ * The career as an Apple tech-spec sheet: one hairline row per role, the
+ * company carrying the weight, the period set in tabular figures, and the
+ * focus areas chipped underneath. Closed by the old footnote line.
  */
 export function Experience() {
   const { d, l } = useI18n();
-  // "02 — Experience" → the numeral rides in the Eyebrow index slot.
-  const [index, eyebrow] = d.experience.eyebrow.split(" — ");
-
-  const railRef = useRef<HTMLDivElement | null>(null);
-  const reduced = useReducedMotion();
-  const { scrollYProgress } = useScroll({
-    target: railRef,
-    offset: ["start center", "end center"],
-  });
-  const draw = useSpring(scrollYProgress, {
-    stiffness: 80,
-    damping: 26,
-    restDelta: 0.001,
-  });
+  // "02 — Experience" → the label tail rides the kicker; no numerals up here.
+  const kicker = d.experience.eyebrow.split(" — ")[1] ?? d.experience.eyebrow;
 
   return (
-    <Section id="experience">
-      <Reveal className="reveal-mask">
-        <SectionHead
-          index={index}
-          eyebrow={eyebrow ?? d.experience.eyebrow}
-          title={d.experience.title}
-          lead={d.experience.lead}
-          wide
-        />
+    <Section id="experience" tone="dark">
+      <Reveal>
+        <Kicker>{kicker}</Kicker>
+      </Reveal>
+      <Reveal delay={70}>
+        <Headline>{d.experience.title}</Headline>
+      </Reveal>
+      <Reveal delay={140}>
+        <Lead className="max-w-[46rem]">{d.experience.lead}</Lead>
       </Reveal>
 
-      <div ref={railRef} className="relative mt-14">
-        {/* the rail: hairline first, the signal drawn over it by scroll */}
-        <span
-          aria-hidden
-          className="absolute top-2 bottom-2 left-[7px] w-px bg-gradient-to-b from-line-hi via-line-hi to-line"
-        />
-        {reduced === false ? (
-          <motion.span
-            aria-hidden
-            className="absolute top-2 bottom-2 left-[7px] w-px origin-top bg-gradient-to-b from-signal via-signal/60 to-signal/10"
-            style={{ scaleY: draw }}
-          />
-        ) : null}
+      {/* ---------- the spec sheet ---------- */}
+      <ol className="mt-16">
+        {timeline.map((entry, i) => {
+          const w = weight[entry.scale];
 
-        <ol className="space-y-6">
-          {timeline.map((entry, entryIndex) => {
-            const w = weight[entry.scale];
-            const dim = entry.scale === "small";
+          return (
+            <Reveal
+              as="li"
+              key={entry.id}
+              delay={i * 90}
+              className="grid gap-5 border-b hairline last:border-b-0 sm:grid-cols-[10rem_1fr] sm:gap-10"
+            >
+              <article className={cx("contents", w.row)}>
+                <div className="flex flex-wrap items-center gap-3 sm:flex-col sm:items-start">
+                  <p className="text-[15px] tabular-nums text-soft">
+                    {l(entry.period)}
+                  </p>
+                  {entry.current ? <Tag>{d.experience.current}</Tag> : null}
+                </div>
 
-            return (
-              <Reveal
-                as="li"
-                key={entry.id}
-                delay={entryIndex * 80}
-                className="reveal-x relative pl-8 sm:pl-12"
-              >
-                {/* node on the rail */}
-                <span
-                  aria-hidden
-                  className={cx(
-                    "absolute top-8 left-[7px] -translate-x-1/2 rounded-full border-2 border-void",
-                    w.dot,
-                    entry.current ? "bg-signal" : dim ? "bg-faint" : "bg-line-hi",
-                    entry.current &&
-                      "shadow-[0_0_0_4px_color-mix(in_oklab,var(--color-signal)_18%,transparent)]",
-                  )}
-                />
-                {entry.current ? (
-                  <span
-                    aria-hidden
+                <div>
+                  <h3
                     className={cx(
-                      "absolute top-8 left-[7px] -translate-x-1/2 animate-ping rounded-full bg-signal/40",
-                      w.dot,
+                      "font-semibold tracking-tight text-main",
+                      w.company,
                     )}
-                    style={{ animationDuration: "3.4s" }}
-                  />
-                ) : null}
-
-                <article className={cx("panel grain ticks volt-rim", w.card)}>
-                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-                    <h3
-                      className={cx(
-                        "font-display tracking-tight",
-                        w.title,
-                        dim ? "text-mute" : "text-ink",
-                      )}
-                    >
-                      {l(entry.role)}
-                    </h3>
-
+                  >
                     {entry.url ? (
-                      <a
+                      <TextLink
                         href={entry.url}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="group inline-flex items-center gap-1.5 font-mono text-2xs tracking-wide text-azure transition-colors hover:text-signal"
+                        external
+                        className="font-semibold text-main"
                       >
-                        <Building2
-                          aria-hidden
-                          className="size-3"
-                          strokeWidth={1.75}
-                        />
-                        {entry.company}
-                        <ArrowUpRight
-                          aria-hidden
-                          className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-                          strokeWidth={1.75}
-                        />
-                        <span className="sr-only">{d.a11y.external}</span>
-                      </a>
+                        <span className={w.company}>{entry.company}</span>
+                      </TextLink>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 font-mono text-2xs tracking-wide text-signal">
-                        <Building2
-                          aria-hidden
-                          className="size-3"
-                          strokeWidth={1.75}
-                        />
-                        {entry.company}
-                      </span>
+                      entry.company
                     )}
+                  </h3>
 
-                    <span className="ml-auto flex items-center gap-2 font-mono text-2xs text-dim tabular-nums">
-                      {entry.current ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-signal/40 bg-signal-deep px-2 py-0.5 text-signal-text">
-                          {d.experience.current}
-                        </span>
-                      ) : (
-                        <span className="inline-flex rounded-full border border-line-hi px-2 py-0.5 text-faint">
-                          {d.experience.older}
-                        </span>
-                      )}
-                      {l(entry.period)}
-                    </span>
-                  </div>
+                  <p className="mt-2 text-[17px] text-soft">
+                    {l(entry.role)}
+                  </p>
 
                   <p
                     className={cx(
-                      "mt-3 max-w-3xl leading-relaxed text-mute",
-                      w.body,
+                      "mt-4 max-w-[46rem] leading-relaxed",
+                      w.summary,
                     )}
                   >
                     {l(entry.summary)}
                   </p>
 
-                  <div className="mt-5 border-t border-line pt-4">
-                    <p className="label-xs">{d.experience.focusLabel}</p>
-                    <ul className="mt-2.5 flex flex-wrap gap-1.5">
-                      {entry.focus.map((f) => (
-                        <li key={f.en}>
-                          <Chip tone={entry.current ? "signal" : "neutral"}>
-                            {l(f)}
-                          </Chip>
+                  <div className="mt-6">
+                    <p className="text-[13px] text-soft">
+                      {d.experience.focusLabel}
+                    </p>
+                    <ul className="mt-3 flex flex-wrap gap-2">
+                      {entry.focus.map((item) => (
+                        <li key={item.en}>
+                          <Tag>{l(item)}</Tag>
                         </li>
                       ))}
                     </ul>
                   </div>
-                </article>
-              </Reveal>
-            );
-          })}
-        </ol>
-      </div>
+                </div>
+              </article>
+            </Reveal>
+          );
+        })}
+      </ol>
 
-      <Reveal
-        delay={120}
-        className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3"
-      >
-        <span className="flex items-center gap-2 font-mono text-2xs text-faint">
-          <MapPin aria-hidden className="size-3" strokeWidth={1.75} />
-          {site.location} · {d.experience.remote}
-        </span>
-        <span className="font-mono text-2xs text-faint">
-          <span aria-hidden className="text-signal">
-            ●
-          </span>{" "}
-          {d.hero.availability}
-        </span>
+      {/* ---------- the closing footnote ---------- */}
+      <Reveal delay={120} className="mt-12">
+        <p className="text-[13px] leading-relaxed text-soft">
+          {site.location} · {d.experience.remote} · {d.hero.availability}
+        </p>
       </Reveal>
     </Section>
   );

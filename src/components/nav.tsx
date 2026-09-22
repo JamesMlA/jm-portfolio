@@ -3,36 +3,38 @@
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { useI18n, type Lang } from "./i18n";
-import { StatusDot } from "./ui";
 import { sections, site } from "@/content/site";
-import type { SectionId } from "@/content/site";
 import { cx } from "@/lib/utils";
 
+/**
+ * The global bar: 44px, frosted, and tone-aware — dark glass over dark
+ * stages, light glass over light ones, exactly like apple.com's long pages.
+ */
 export function Nav() {
   const { d, lang, setLang } = useI18n();
-  const [scrolled, setScrolled] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [active, setActive] = useState<string>("home");
+  const [barDark, setBarDark] = useState(true);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => {
-      const doc = document.documentElement;
-      const max = doc.scrollHeight - window.innerHeight;
-      setScrolled(window.scrollY > 8);
-      setProgress(max > 0 ? Math.min(1, window.scrollY / max) : 0);
-
-      // Later entries win ties so "contact" claims the bottom of the page.
-      let current: SectionId = sections[0].id;
-      for (const s of sections) {
-        const el = document.getElementById(s.id);
-        if (el && el.getBoundingClientRect().top <= 96) current = s.id;
+    const sync = () => {
+      const y = 22;
+      let dark = true;
+      for (const el of document.querySelectorAll<HTMLElement>("main > section")) {
+        const r = el.getBoundingClientRect();
+        if (r.top <= y && r.bottom > y) {
+          dark = el.classList.contains("tone-dark");
+          break;
+        }
       }
-      setActive(current);
+      setBarDark(dark);
     };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    sync();
+    window.addEventListener("scroll", sync, { passive: true });
+    window.addEventListener("resize", sync);
+    return () => {
+      window.removeEventListener("scroll", sync);
+      window.removeEventListener("resize", sync);
+    };
   }, []);
 
   useEffect(() => {
@@ -44,65 +46,42 @@ export function Nav() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  // A jump must not leave the sheet covering the destination.
-  useEffect(() => {
-    if (!open) return;
-    const close = () => setOpen(false);
-    window.addEventListener("hashchange", close);
-    return () => window.removeEventListener("hashchange", close);
-  }, [open]);
-
   const langs: Lang[] = ["en", "es"];
 
   return (
     <header
       className={cx(
-        "fixed inset-x-0 top-0 z-50 transition-colors duration-500",
-        scrolled
-          ? "border-b border-line bg-void/80 backdrop-blur-md"
-          : "border-b border-transparent",
+        "fixed inset-x-0 top-0 z-50 backdrop-blur-[20px] backdrop-saturate-[180%] transition-colors duration-300",
+        barDark
+          ? "bg-[rgba(22,22,23,0.72)] text-[#f5f5f7]"
+          : "bg-[rgba(255,255,255,0.72)] text-ink",
       )}
     >
-      <div className="mx-auto flex h-14 w-full max-w-[76rem] items-center gap-4 px-5 sm:px-8">
-        <a
-          href="#home"
-          className="volt-rim flex items-center gap-2.5 rounded-md border border-line-hi px-2 py-1"
-        >
-          <span aria-hidden className="display-wide text-xs text-signal">
-            JM
-          </span>
-          <span className="font-mono text-2xs tracking-wide text-dim">
-            @{site.handle}
-          </span>
+      <nav
+        aria-label={d.nav.menu}
+        className="mx-auto flex h-11 w-full max-w-[1200px] items-center justify-between px-6 text-[12px]"
+      >
+        <a href="#home" className="font-semibold tracking-tight">
+          {site.name}
         </a>
 
-        <nav aria-label={d.nav.menu} className="hidden md:block">
-          <ul className="flex items-center gap-1">
-            {sections.map((s) => (
+        <ul className="hidden items-center gap-8 md:flex">
+          {sections
+            .filter((s) => s.id !== "home")
+            .map((s) => (
               <li key={s.id}>
                 <a
                   href={`#${s.id}`}
-                  aria-current={active === s.id ? "true" : undefined}
-                  className={cx(
-                    "rounded-md px-2.5 py-1.5 font-mono text-2xs tracking-widest uppercase transition-colors",
-                    active === s.id
-                      ? "text-signal"
-                      : "text-dim hover:text-ink",
-                  )}
+                  className="opacity-80 transition-opacity hover:opacity-100"
                 >
                   {d.nav.sections[s.id]}
                 </a>
               </li>
             ))}
-          </ul>
-        </nav>
+        </ul>
 
-        <div className="ml-auto flex items-center gap-2">
-          <div
-            role="group"
-            aria-label={d.nav.language}
-            className="flex overflow-hidden rounded-md border border-line-hi"
-          >
+        <div className="flex items-center gap-5">
+          <div role="group" aria-label={d.nav.language} className="flex gap-2">
             {langs.map((l) => (
               <button
                 key={l}
@@ -110,63 +89,47 @@ export function Nav() {
                 onClick={() => setLang(l)}
                 aria-pressed={lang === l}
                 className={cx(
-                  "px-2.5 py-1.5 font-mono text-2xs tracking-wide uppercase transition-colors",
-                  lang === l
-                    ? "bg-signal-deep text-signal-text"
-                    : "text-dim hover:text-ink",
+                  "uppercase transition-opacity",
+                  lang === l ? "opacity-100" : "opacity-50 hover:opacity-80",
                 )}
               >
                 {l}
               </button>
             ))}
           </div>
-
           <a
             href="#contact"
-            className="hidden rounded-md border border-signal/40 bg-signal-deep px-3.5 py-2 font-mono text-2xs tracking-wide text-signal-text transition-colors hover:border-signal hover:bg-signal/10 sm:inline-flex"
+            className="hidden rounded-full bg-sky px-3 py-1 text-white transition-opacity hover:opacity-85 sm:inline-flex"
           >
             {d.nav.sections.contact}
           </a>
-
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
             aria-label={open ? d.nav.close : d.nav.menu}
-            className="rounded-md border border-line-hi p-2 text-dim transition-colors hover:text-signal md:hidden"
+            className="md:hidden"
           >
             {open ? (
-              <X className="size-4" strokeWidth={1.75} />
+              <X className="size-5" strokeWidth={1.5} />
             ) : (
-              <Menu className="size-4" strokeWidth={1.75} />
+              <Menu className="size-5" strokeWidth={1.5} />
             )}
           </button>
         </div>
-      </div>
-
-      {/* scroll telemetry — how far into the log we are */}
-      <div aria-hidden className="h-px w-full bg-line/60">
-        <div
-          className="h-px bg-signal shadow-[0_0_8px_var(--color-volt)] transition-[width] duration-150"
-          style={{ width: `${progress * 100}%` }}
-        />
-      </div>
+      </nav>
 
       {open ? (
-        <div className="sheet-scroll border-b border-line bg-void/95 backdrop-blur-md md:hidden">
-          <nav aria-label={d.nav.menu} className="px-5 py-3 sm:px-8">
-            <ul className="flex flex-col divide-y divide-line">
+        <div className="fixed inset-0 top-11 bg-[rgba(0,0,0,0.92)] text-[#f5f5f7] backdrop-blur-[20px] backdrop-saturate-[180%] md:hidden">
+          <nav aria-label={d.nav.menu} className="px-6 py-6">
+            <ul className="flex flex-col">
               {sections.map((s) => (
-                <li key={s.id}>
+                <li key={s.id} className="border-b border-white/10 last:border-b-0">
                   <a
                     href={`#${s.id}`}
                     onClick={() => setOpen(false)}
-                    className={cx(
-                      "flex items-center gap-3 py-3 font-mono text-2xs tracking-widest uppercase",
-                      active === s.id ? "text-signal" : "text-mute",
-                    )}
+                    className="block py-4 text-[24px] font-semibold tracking-tight"
                   >
-                    <StatusDot pulse={false} tone="signal" />
                     {d.nav.sections[s.id]}
                   </a>
                 </li>
