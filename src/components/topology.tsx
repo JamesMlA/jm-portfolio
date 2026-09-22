@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Pause, Play, Workflow } from "lucide-react";
 import { useI18n } from "./i18n";
-import { cx } from "@/lib/utils";
 import { PanelBar } from "./ui";
-import { Workflow, Pause, Play } from "lucide-react";
+import { cx } from "@/lib/utils";
 
 const NODE_W = 122;
 const NODE_H = 38;
@@ -82,23 +82,53 @@ const columns: { x: number; label: string; ids: NodeId[] }[] = [
   { x: 930, label: "observability", ids: ["grafana", "logs", "alerts"] },
 ];
 
-/** Spine path reused by the flow dashes and the travelling packets. */
+/** Signal edge reused by the flow dashes and the travelling packets. */
 const spinePath = spine
   .map((id, i) => `${i === 0 ? "M" : "L"} ${byId[id].x} ${byId[id].y}`)
-  .join(" ")
-  .concat(` L ${byId.grafana.x} ${byId.grafana.y}`);
+  .join(" ");
 
-const FEEDBACK_PATH = `M ${byId.alerts.x} ${byId.alerts.y + SMALL_H / 2 + 8} V 286 H ${byId.actions.x} V ${byId.actions.y + NODE_H / 2 + 6}`;
+/** Observation closes the loop: what alerts surface returns as the next change. */
+const FEEDBACK_PATH = `M ${byId.alerts.x} ${byId.alerts.y + SMALL_H / 2 + 6} V 292 H ${byId.actions.x} V ${byId.actions.y + NODE_H / 2 + 6}`;
+
+
+
+/**
+ * SMIL (packets, LED pulse) is not touched by the CSS reduced-motion rules,
+ * so motion is gated in JS and the diagram stays complete without it.
+ */
+function useMotionAllowed() {
+  const [allowed, setAllowed] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: no-preference)");
+    const sync = () => setAllowed(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  return allowed;
+}
 
 export function Topology() {
   const { d } = useI18n();
   const t = d.topology;
-  const [active, setActive] = useState<NodeId | null>("kubernetes");
+  const [active, setActive] = useState<NodeId | null>(null);
   const [running, setRunning] = useState(true);
+  const motionAllowed = useMotionAllowed();
+  const svgRef = useRef<SVGSVGElement | null>(null);
   const activeSpec = active ? byId[active] : null;
 
+  // Paused freezes the packets mid-edge; the flow dashes fall back to static.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    if (running) svg.unpauseAnimations();
+    else svg.pauseAnimations();
+  }, [running]);
+
   return (
-    <div className="panel grain relative overflow-hidden">
+    <div className="panel grain ticks relative overflow-hidden">
       <PanelBar
         title={t.title}
         icon={Workflow}
@@ -107,36 +137,30 @@ export function Topology() {
             type="button"
             onClick={() => setRunning((r) => !r)}
             aria-pressed={!running}
-            className="flex items-center gap-1.5 rounded border border-line px-2 py-1 font-mono text-2xs tracking-wide text-dim transition-colors hover:border-line-hi hover:text-mute"
+            className="flex min-h-6 items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 font-mono text-2xs tracking-wide text-dim transition-colors hover:border-line-hi hover:text-mute"
           >
-            {running ? <Pause className="size-3" /> : <Play className="size-3" />}
+            {running ? (
+              <Pause className="size-3" strokeWidth={1.75} />
+            ) : (
+              <Play className="size-3" strokeWidth={1.75} />
+            )}
             {running ? t.running : t.paused}
           </button>
         }
       />
 
-      {/* Desktop / tablet diagram */}
+      {/* Desktop / tablet schematic */}
       <div className="hidden px-2 py-4 sm:block">
         <svg
+          ref={svgRef}
           viewBox="0 0 1008 316"
-          role="img"
+          role="group"
           aria-label={t.caption}
-          className={cx("w-full", !running && "topology-paused")}
+          className="w-full"
         >
           <defs>
             <marker
-              id="arrow"
-              viewBox="0 0 8 8"
-              refX="7"
-              refY="4"
-              markerWidth="6"
-              markerHeight="6"
-              orient="auto-start-reverse"
-            >
-              <path d="M0 0 L8 4 L0 8 z" fill="var(--color-line-hi)" />
-            </marker>
-            <marker
-              id="arrow-active"
+              id="topo-arrow-signal"
               viewBox="0 0 8 8"
               refX="7"
               refY="4"
@@ -146,116 +170,145 @@ export function Topology() {
             >
               <path d="M0 0 L8 4 L0 8 z" fill="var(--color-signal)" />
             </marker>
+            <marker
+              id="topo-arrow-amber"
+              viewBox="0 0 8 8"
+              refX="7"
+              refY="4"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto-start-reverse"
+            >
+              <path d="M0 0 L8 4 L0 8 z" fill="var(--color-amber)" />
+            </marker>
           </defs>
 
-          {/* stage labels + column ticks */}
+          {/* stage rails — one engineering column per pipeline stage */}
+          <g aria-hidden>
+            <line x1="28" y1="38" x2="980" y2="38" stroke="var(--color-line)" strokeWidth="1" />
+            {columns.map((col) => (
+              <g key={col.label}>
+                <line
+                  x1={col.x}
+                  y1="38"
+                  x2={col.x}
+                  y2="300"
+                  stroke="var(--color-line)"
+                  strokeWidth="1"
+                  strokeDasharray="1 6"
+                />
+                <line
+                  x1={col.x}
+                  y1="38"
+                  x2={col.x}
+                  y2={46}
+                  stroke="var(--color-line-hi)"
+                  strokeWidth="1"
+                />
+              </g>
+            ))}
+          </g>
           {columns.map((col) => (
-            <g key={col.label}>
-              <text
-                x={col.x}
-                y={26}
-                textAnchor="middle"
-                className="fill-faint font-mono text-[9px] tracking-[0.18em] uppercase"
-              >
-                {t.stages[col.label as keyof typeof t.stages]}
-              </text>
-              <line
-                x1={col.x}
-                y1={38}
-                x2={col.x}
-                y2={44}
-                stroke="var(--color-line-hi)"
-                strokeWidth="1"
-              />
-            </g>
+            <text
+              key={col.label}
+              x={col.x}
+              y={26}
+              textAnchor="middle"
+              className="fill-faint font-mono text-[9px] tracking-[0.18em] uppercase"
+            >
+              {t.stages[col.label as keyof typeof t.stages]}
+            </text>
           ))}
 
           {/* vertical connectors between stacked nodes */}
-          {nodes
-            .filter((n) => n.below)
-            .map((n) => {
-              const parent = byId[n.below!];
-              const startY = parent.y + (parent.small ? SMALL_H : NODE_H) / 2;
-              const endY = n.y - (n.small ? SMALL_H : NODE_H) / 2;
-              return (
-                <line
-                  key={`edge-${n.id}`}
-                  x1={n.x}
-                  y1={startY}
-                  x2={n.x}
-                  y2={endY}
-                  stroke="var(--color-line-hi)"
-                  strokeWidth="1"
-                  strokeDasharray="2 3"
-                />
-              );
-            })}
-
-          {/* horizontal spine */}
-          <path
-            d={spinePath}
-            fill="none"
-            stroke="var(--color-line-hi)"
-            strokeWidth="1.25"
-            markerEnd="url(#arrow)"
-          />
-
-          {/* animated flow overlay */}
-          <path
-            className="motion-only animate-flow"
-            d={spinePath}
-            fill="none"
-            stroke="var(--color-signal)"
-            strokeWidth="1.25"
-            strokeDasharray="3 13"
-            opacity="0.85"
-          />
-
-          {/* observability feedback loop */}
-          <path
-            d={FEEDBACK_PATH}
-            fill="none"
-            stroke="var(--color-amber)"
-            strokeWidth="1"
-            strokeDasharray="4 4"
-            opacity="0.5"
-            markerEnd="url(#arrow)"
-          />
-          <text
-            x={560}
-            y={280}
-            textAnchor="middle"
-            className="fill-amber/70 font-mono text-[9px] tracking-[0.16em] uppercase"
-          >
-            feedback
-          </text>
-
-          {/* travelling change — commit moving through the pipeline */}
-          <g className="motion-only">
-            <circle r="3" fill="var(--color-signal)">
-              <animateMotion dur="9s" repeatCount="indefinite" path={spinePath} />
-              <animate
-                attributeName="opacity"
-                values="0;1;1;0"
-                keyTimes="0;0.05;0.9;1"
-                dur="9s"
-                repeatCount="indefinite"
-              />
-            </circle>
-            <circle r="2.5" fill="var(--color-azure)" opacity="0.9">
-              <animateMotion
-                dur="9s"
-                begin="4.5s"
-                repeatCount="indefinite"
-                path={spinePath}
-              />
-            </circle>
+          <g aria-hidden>
+            {nodes
+              .filter((n) => n.below)
+              .map((n) => {
+                const parent = byId[n.below!];
+                const startY = parent.y + (parent.small ? SMALL_H : NODE_H) / 2;
+                const endY = n.y - (n.small ? SMALL_H : NODE_H) / 2;
+                return (
+                  <line
+                    key={`edge-${n.id}`}
+                    x1={n.x}
+                    y1={startY}
+                    x2={n.x}
+                    y2={endY}
+                    stroke="var(--color-line-hi)"
+                    strokeWidth="1"
+                    strokeDasharray="2 3"
+                  />
+                );
+              })}
           </g>
+
+          {/* signal edge — the delivery path */}
+          <g aria-hidden>
+            <path
+              d={spinePath}
+              fill="none"
+              stroke="var(--color-signal-dim)"
+              strokeWidth="1.25"
+              markerEnd="url(#topo-arrow-signal)"
+            />
+            <path
+              className={running ? "motion-only animate-flow" : undefined}
+              d={spinePath}
+              fill="none"
+              stroke="var(--color-signal)"
+              strokeWidth="1.25"
+              strokeDasharray="3 13"
+              opacity="0.85"
+            />
+
+            {/* observability feedback loop */}
+            <path
+              d={FEEDBACK_PATH}
+              fill="none"
+              stroke="var(--color-amber)"
+              strokeWidth="1"
+              strokeDasharray="4 4"
+              opacity="0.45"
+              markerEnd="url(#topo-arrow-amber)"
+            />
+            <text
+              x={(byId.actions.x + byId.alerts.x) / 2}
+              y={286}
+              textAnchor="middle"
+              className="fill-amber font-mono text-[9px] tracking-[0.18em] uppercase"
+            >
+              {t.feedback}
+            </text>
+          </g>
+
+          {/* travelling packets — a change moving through the pipeline */}
+          {motionAllowed ? (
+            <g aria-hidden className="motion-only">
+              <circle r="3" fill="var(--color-signal)">
+                <animateMotion dur="9s" repeatCount="indefinite" path={spinePath} />
+                <animate
+                  attributeName="opacity"
+                  values="0;1;1;0"
+                  keyTimes="0;0.05;0.9;1"
+                  dur="9s"
+                  repeatCount="indefinite"
+                />
+              </circle>
+              <circle r="2.5" fill="var(--color-azure)" opacity="0.9">
+                <animateMotion dur="9s" begin="4.5s" repeatCount="indefinite" path={spinePath} />
+              </circle>
+            </g>
+          ) : null}
 
           {/* nodes */}
           {nodes.map((n) => {
             const h = n.small ? SMALL_H : NODE_H;
             const isActive = active === n.id;
+            const x0 = n.x - NODE_W / 2;
+            const x1 = n.x + NODE_W / 2;
+            const y0 = n.y - h / 2;
+            const y1 = n.y + h / 2;
             return (
               <g
                 key={n.id}
@@ -266,11 +319,17 @@ export function Topology() {
                 onMouseEnter={() => setActive(n.id)}
                 onFocus={() => setActive(n.id)}
                 onClick={() => setActive(n.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setActive(n.id);
+                  }
+                }}
                 className="cursor-pointer outline-none"
               >
                 <rect
-                  x={n.x - NODE_W / 2}
-                  y={n.y - h / 2}
+                  x={x0}
+                  y={y0}
                   width={NODE_W}
                   height={h}
                   rx="7"
@@ -279,14 +338,27 @@ export function Topology() {
                   strokeWidth={isActive ? 1.25 : 1}
                   className="transition-[fill,stroke] duration-300"
                 />
+                {isActive ? (
+                  /* engineering-drawing corner ticks around the selected chip */
+                  <path
+                    aria-hidden
+                    d={`M ${x0 - 4} ${y0 + 5} V ${y0 - 4} H ${x0 + 5} M ${x1 - 5} ${y0 - 4} H ${x1 + 4} V ${y0 + 5} M ${x1 + 4} ${y1 - 5} V ${y1 + 4} H ${x1 - 5} M ${x0 + 5} ${y1 + 4} H ${x0 - 4} V ${y1 - 5}`}
+                    fill="none"
+                    stroke="var(--color-signal)"
+                    strokeWidth="1.25"
+                    opacity="0.8"
+                  />
+                ) : null}
                 {n.accent ? (
-                  <circle cx={n.x - NODE_W / 2 + 12} cy={n.y} r="2.5" fill="var(--color-signal)">
-                    <animate
-                      attributeName="opacity"
-                      values="1;0.25;1"
-                      dur="2.6s"
-                      repeatCount="indefinite"
-                    />
+                  <circle cx={x0 + 12} cy={n.y} r="2.5" fill="var(--color-signal)">
+                    {motionAllowed ? (
+                      <animate
+                        attributeName="opacity"
+                        values="1;0.25;1"
+                        dur="2.6s"
+                        repeatCount="indefinite"
+                      />
+                    ) : null}
                   </circle>
                 ) : null}
                 <text
@@ -294,7 +366,7 @@ export function Topology() {
                   y={n.y + 3.5}
                   textAnchor="middle"
                   className={cx(
-                    "font-mono text-[10.5px] transition-colors duration-300",
+                    "font-mono text-[10.5px] tracking-[0.04em] transition-colors duration-300",
                     isActive ? "fill-ink" : "fill-mute",
                   )}
                 >
@@ -304,16 +376,9 @@ export function Topology() {
             );
           })}
         </svg>
-
-        <div className="mt-3 flex items-start gap-3 border-t border-line px-4 pt-3">
-          <span className="label-xs mt-0.5 shrink-0">{t.inspect}</span>
-          <p className="min-h-[2.5rem] text-xs leading-relaxed text-mute">
-            {activeSpec ? t.notes[activeSpec.id] : t.caption}
-          </p>
-        </div>
       </div>
 
-      {/* Mobile: same topology as a linear rail */}
+      {/* Mobile: the same pipeline as a staged rail */}
       <ol className="divide-y divide-line sm:hidden">
         {columns.map((col) => (
           <li key={col.label} className="px-4 py-3">
@@ -324,24 +389,31 @@ export function Topology() {
                   key={id}
                   type="button"
                   onClick={() => setActive(id)}
+                  aria-pressed={active === id}
                   className={cx(
-                    "rounded-md border px-2.5 py-1.5 font-mono text-2xs transition-colors",
+                    "min-h-8 rounded-md border px-2.5 py-2 font-mono text-2xs tracking-wide transition-colors",
                     active === id
                       ? "border-signal/60 bg-signal-deep text-signal-text"
-                      : "border-line text-mute",
+                      : "border-line-hi bg-panel/60 text-mute",
                   )}
                 >
                   {t.nodes[id]}
                 </button>
               ))}
             </div>
-            {col.ids.includes(active ?? "developer") ? (
-              <p className="mt-2 text-xs leading-relaxed text-mute">{t.notes[active!]}</p>
-            ) : null}
           </li>
         ))}
       </ol>
 
+      {/* inspector — shared readout for the diagram and the rail */}
+      <div className="flex flex-wrap items-start gap-x-3 gap-y-1 border-t border-line px-4 py-3">
+        <span className="label-xs mt-0.5 shrink-0">{t.inspect}</span>
+        <p className="min-h-[2.5rem] min-w-0 flex-1 text-xs leading-relaxed text-mute">
+          {activeSpec ? t.notes[activeSpec.id] : t.caption}
+        </p>
+      </div>
+
+      {/* legend + the honesty label — always visible */}
       <p className="border-t border-line px-4 py-2.5 text-2xs leading-relaxed text-faint">
         <span className="mr-1.5 font-mono tracking-[0.16em] text-dim uppercase">
           {t.legend}

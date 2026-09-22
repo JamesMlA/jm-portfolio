@@ -1,11 +1,19 @@
 "use client";
 
+import {
+  useRef,
+  useSyncExternalStore,
+  type CSSProperties,
+} from "react";
 import { cx } from "@/lib/utils";
 
 /**
- * Compact architecture diagrams. Hand-placed boxes + orthogonal connectors —
- * a technical drawing, not an auto-layout. Everything is SVG so it scales,
- * prints and survives dark/light theming through CSS variables.
+ * Compact architecture diagrams — mission-control schematics.
+ * Hand-placed boxes + orthogonal connectors: a technical drawing, not an
+ * auto-layout. Hairline strokes throughout; the signal path runs mint,
+ * telemetry edges amber, and each node class carries its instrumentation
+ * colour. Everything is SVG so it scales and survives dark/light theming
+ * through CSS variables.
  */
 
 type Kind = "plain" | "accent" | "cloud" | "data" | "store";
@@ -34,12 +42,14 @@ type DEdge = {
 const W = 168;
 const H = 46;
 
+/** Node classes: mint marks control points, azure the cloud boundary,
+ *  amber the data plane. Everything else stays hairline neutral. */
 const strokeFor: Record<Kind, string> = {
   plain: "var(--color-line-hi)",
   accent: "var(--color-signal)",
   cloud: "var(--color-azure)",
   data: "var(--color-amber)",
-  store: "var(--color-line-hi)",
+  store: "var(--color-terrain)",
 };
 
 const fillFor: Record<Kind, string> = {
@@ -49,6 +59,56 @@ const fillFor: Record<Kind, string> = {
   data: "color-mix(in oklab, var(--color-amber) 8%, var(--color-panel))",
   store: "var(--color-panel)",
 };
+
+const labelFor: Record<Kind, string> = {
+  plain: "fill-ink",
+  accent: "fill-signal",
+  cloud: "fill-azure",
+  data: "fill-amber",
+  store: "fill-ink",
+};
+
+/** Strokes draw themselves in once the figure reaches the viewport. The
+ *  `.motion-only .draw` rule only exists under scripting + motion allowed,
+ *  so reduced-motion readers keep fully drawn static schematics; pausing
+ *  the animation just holds the pre-draw state until the drawing is seen. */
+/** Visibility latch per element — one-way, so the snapshot stays cheap. */
+const seen = new WeakSet<Element>();
+
+function subscribeInView(
+  ref: React.RefObject<Element | null>,
+  onChange: () => void,
+) {
+  const el = ref.current;
+  if (!el || typeof IntersectionObserver === "undefined") return () => {};
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          seen.add(el);
+          onChange();
+          io.disconnect();
+        }
+      }
+    },
+    { rootMargin: "0px 0px -8% 0px", threshold: 0.15 },
+  );
+  io.observe(el);
+  return () => io.disconnect();
+}
+
+function useInView(ref: React.RefObject<Element | null>) {
+  return useSyncExternalStore(
+    (onChange) => subscribeInView(ref, onChange),
+    () => {
+      const el = ref.current;
+      return (
+        typeof IntersectionObserver === "undefined" || (el !== null && seen.has(el))
+      );
+    },
+    () => false,
+  );
+}
 
 export function Diagram({
   boxes,
@@ -63,6 +123,8 @@ export function Diagram({
   caption?: string;
   className?: string;
 }) {
+  const frameRef = useRef<SVGSVGElement | null>(null);
+  const inView = useInView(frameRef);
   const map = Object.fromEntries(boxes.map((b) => [b.id, b]));
   const geo = (b: DBox) => {
     const w = b.w ?? W;
@@ -73,6 +135,7 @@ export function Diagram({
   return (
     <figure className={cx("panel grain relative overflow-hidden", className)}>
       <svg
+        ref={frameRef}
         viewBox={viewBox}
         role="img"
         aria-label={caption}
@@ -81,45 +144,71 @@ export function Diagram({
       >
         <defs>
           <marker id="dg-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M0 0 L8 4 L0 8 z" fill="var(--color-line-hi)" />
+            <path d="M0 0 L8 4 L0 8 z" fill="var(--color-signal)" />
           </marker>
           <marker id="dg-arrow-d" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M0 0 L8 4 L0 8 z" fill="var(--color-amber)" />
           </marker>
         </defs>
 
-        {edges.map((edge, i) => {
-          const a = map[edge.from];
-          const b = map[edge.to];
-          if (!a || !b) return null;
-          const ga = geo(a);
-          const gb = geo(b);
-          let d: string;
+        <g className="motion-only">
+          {edges.map((edge, i) => {
+            const a = map[edge.from];
+            const b = map[edge.to];
+            if (!a || !b) return null;
+            const ga = geo(a);
+            const gb = geo(b);
+            let d: string;
 
-          if (edge.drop !== undefined) {
-            d = `M ${ga.cx} ${a.y + ga.h} V ${edge.drop} H ${gb.cx} V ${b.y}`;
-          } else if (Math.abs(gb.cy - ga.cy) < 6 && gb.cx > ga.cx) {
-            d = `M ${a.x + ga.w} ${ga.cy} H ${b.x}`;
-          } else if (gb.cx > ga.cx + W) {
-            const midX = ga.cx + (gb.cx - ga.cx) / 2;
-            d = `M ${a.x + ga.w} ${ga.cy} H ${midX} V ${gb.cy} H ${b.x}`;
-          } else {
-            d = `M ${ga.cx} ${a.y + ga.h} V ${b.y}`;
-          }
+            if (edge.drop !== undefined) {
+              d = `M ${ga.cx} ${a.y + ga.h} V ${edge.drop} H ${gb.cx} V ${b.y}`;
+            } else if (Math.abs(gb.cy - ga.cy) < 6 && gb.cx > ga.cx) {
+              d = `M ${a.x + ga.w} ${ga.cy} H ${b.x}`;
+            } else if (gb.cx > ga.cx + W) {
+              const midX = ga.cx + (gb.cx - ga.cx) / 2;
+              d = `M ${a.x + ga.w} ${ga.cy} H ${midX} V ${gb.cy} H ${b.x}`;
+            } else {
+              d = `M ${ga.cx} ${a.y + ga.h} V ${b.y}`;
+            }
 
-          return (
-            <path
-              key={i}
-              d={d}
-              fill="none"
-              stroke={edge.dashed ? "var(--color-amber)" : "var(--color-line-hi)"}
-              strokeWidth="1.1"
-              strokeDasharray={edge.dashed ? "4 4" : undefined}
-              opacity={edge.dashed ? 0.6 : 1}
-              markerEnd={edge.dashed ? "url(#dg-arrow-d)" : "url(#dg-arrow)"}
-            />
-          );
-        })}
+            return (
+              <g key={i}>
+                {/* the schematic hairline: mint signal path, amber telemetry */}
+                <path
+                  d={d}
+                  fill="none"
+                  pathLength={edge.dashed ? undefined : 1}
+                  stroke={edge.dashed ? "var(--color-amber)" : "var(--color-signal)"}
+                  strokeWidth="1"
+                  vectorEffect="non-scaling-stroke"
+                  strokeDasharray={edge.dashed ? "4 4" : undefined}
+                  opacity={edge.dashed ? 0.65 : 0.5}
+                  markerEnd={edge.dashed ? "url(#dg-arrow-d)" : "url(#dg-arrow)"}
+                  className={edge.dashed ? undefined : "draw"}
+                  style={
+                    edge.dashed
+                      ? undefined
+                      : ({
+                          animationPlayState: inView ? "running" : "paused",
+                          "--draw-delay": `${i * 70}ms`,
+                        } as CSSProperties)
+                  }
+                />
+                {/* travelling flow riding the edge */}
+                <path
+                  d={d}
+                  fill="none"
+                  stroke={edge.dashed ? "var(--color-amber)" : "var(--color-signal)"}
+                  strokeWidth="1"
+                  vectorEffect="non-scaling-stroke"
+                  strokeDasharray={edge.dashed ? "2 14" : "3 13"}
+                  opacity={edge.dashed ? 0.9 : 0.95}
+                  className="animate-flow"
+                />
+              </g>
+            );
+          })}
+        </g>
 
         {boxes.map((b) => {
           const g = geo(b);
@@ -131,25 +220,31 @@ export function Diagram({
                 y={b.y}
                 width={g.w}
                 height={g.h}
-                rx="7"
+                rx="2"
                 fill={fillFor[kind]}
                 stroke={strokeFor[kind]}
-                strokeWidth={kind === "accent" ? 1.3 : 1}
+                strokeWidth={kind === "accent" ? 1.2 : 1}
+                strokeDasharray={kind === "store" ? "3 3" : undefined}
+                vectorEffect="non-scaling-stroke"
               />
               {kind === "accent" ? (
-                <circle cx={b.x + 12} cy={b.y + 14} r="2.5" fill="var(--color-signal)">
-                  <animate attributeName="opacity" values="1;0.2;1" dur="2.8s" repeatCount="indefinite" />
-                </circle>
+                <circle
+                  cx={b.x + 12}
+                  cy={b.y + 14}
+                  r="2"
+                  fill="var(--color-signal)"
+                  className="animate-blink"
+                />
               ) : null}
               <text
                 x={b.x + (kind === "accent" ? 22 : 12)}
                 y={b.y + (b.rows ? 20 : b.sub ? 21 : 27)}
-                className={cx("font-mono text-[10.5px]", kind === "accent" ? "fill-signal" : "fill-ink")}
+                className={cx("font-mono text-2xs", labelFor[kind])}
               >
                 {b.label}
               </text>
               {b.sub ? (
-                <text x={b.x + 12} y={b.y + 36} className="fill-dim font-mono text-[9px]">
+                <text x={b.x + 12} y={b.y + 36} className="fill-dim font-mono text-2xs">
                   {b.sub}
                 </text>
               ) : null}
@@ -158,7 +253,7 @@ export function Diagram({
                   key={row}
                   x={b.x + 12}
                   y={b.y + 36 + ri * 13}
-                  className="fill-mute font-mono text-[9px]"
+                  className="fill-mute font-mono text-2xs"
                 >
                   <tspan className="fill-signal">·</tspan> {row}
                 </text>
@@ -325,7 +420,7 @@ export function ProjectDiagram({
   return <Diagram boxes={boxes} edges={edges} viewBox={viewBox} caption={caption} />;
 }
 
-/** Small abstract preview used on the project cards. */
+/** Small abstract preview used on the project plates. */
 export function DiagramTrace({ variant }: { variant: keyof typeof diagrams }) {
   const paths: Record<keyof typeof diagrams, string[]> = {
     cloud: ["M4 20 H26 V10 H48", "M4 20 H26 V30 H48", "M48 10 H70", "M48 30 H70 V20 H92"],
@@ -347,6 +442,16 @@ export function DiagramTrace({ variant }: { variant: keyof typeof diagrams }) {
           className={i === 0 ? "stroke-signal/60" : undefined}
         />
       ))}
+      {/* travelling signal along the mint run */}
+      <path
+        d={paths[variant][0]}
+        fill="none"
+        stroke="var(--color-signal)"
+        strokeWidth="1"
+        strokeDasharray="3 5"
+        opacity="0.9"
+        className="motion-only animate-flow"
+      />
       {[
         [4, 20],
         [22, 20],

@@ -1,9 +1,11 @@
 @import "tailwindcss";
 
 /* ------------------------------------------------------------------ *
- * Design tokens — "operations console"
- * dark-first, low-chroma base, one dominant signal accent (mint),
- * amber reserved for warnings/output, azure for links.
+ * Design tokens — "mission control"
+ * Deep void, low-chroma base, one dominant signal accent (phosphor mint),
+ * amber reserved for instrumentation/warnings, azure for links.
+ * The text ramp is WCAG AA-verified against void/panel/panel-hi — tune
+ * surfaces freely, never shift the ramp without re-measuring.
  * ------------------------------------------------------------------ */
 @theme {
   --color-void: #05080a;
@@ -12,12 +14,8 @@
   --color-panel-hi: #0d161c;
   --color-line: #152229;
   --color-line-hi: #1e3138;
-  /* Contour ink — separate from the border ramp so the map can be tuned
-     without shifting every hairline in the interface. */
   --color-terrain: #3d5c66;
   --color-ink: #e3ecef;
-  /* Text ramp — each step measured at >= 4.5:1 against void, panel and
-     panel-hi (WCAG AA for body copy). The steps stay cool, not grey. */
   --color-mute: #9aafb8;
   --color-dim: #8397a1;
   --color-faint: #708595;
@@ -29,6 +27,10 @@
   --color-amber: #f0b45f;
   --color-azure: #6ba7f5;
   --color-rose: #f2777a;
+
+  /* Atmosphere — decoration only, never behind text at strength. */
+  --color-grid: rgb(123 177 196 / 0.05);
+  --color-volt: rgb(79 227 161 / 0.35);
 
   --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
@@ -42,6 +44,8 @@
   --shadow-panel: 0 1px 0 0 rgb(255 255 255 / 0.03) inset,
     0 24px 60px -32px rgb(0 0 0 / 0.9);
   --shadow-lift: 0 30px 80px -40px rgb(0 0 0 / 1), 0 0 0 1px var(--color-line-hi);
+  --shadow-volt: 0 0 0 1px color-mix(in oklab, var(--color-signal) 32%, transparent),
+    0 0 48px -12px color-mix(in oklab, var(--color-signal) 45%, transparent);
 
   --animate-pulse-ring: pulse-ring 2.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-flow: flow 3.4s linear infinite;
@@ -49,6 +53,10 @@
   --animate-blink: blink 1.1s step-end infinite;
   --animate-drift: drift 26s ease-in-out infinite;
   --animate-rise: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-fade: fade 1.4s ease-out both;
+  --animate-sweep: sweep 8s linear infinite;
+  --animate-scan: scan 7s linear infinite;
+  --animate-flicker: flicker 4s ease-in-out infinite;
 }
 
 @keyframes pulse-ring {
@@ -106,44 +114,46 @@
   }
 }
 
-/* ------------------------------------------------------------------ *
- * Light interface — "offset print": warm paper, ink text,
- * the same mint accent pushed darker for contrast.
- * ------------------------------------------------------------------ */
-html[data-theme="light"] {
-  --color-void: #f5f2ec;
-  --color-abyss: #ece7de;
-  --color-panel: #faf8f4;
-  --color-panel-hi: #ffffff;
-  --color-line: #e2dbd0;
-  --color-line-hi: #cec5b6;
-  --color-terrain: #b9ad9b;
-  --color-ink: #15181a;
-  /* Same AA floor on the light surfaces. */
-  --color-mute: #414c55;
-  --color-dim: #46515a;
-  --color-faint: #556069;
-
-  --color-signal-text: #096a45;
-  --color-signal: #096a45;
-  --color-signal-dim: #8fd3b8;
-  --color-signal-deep: #e4f3ec;
-  --color-amber: #8f5c0f;
-  --color-azure: #1a5cbb;
-  --color-rose: #b0343a;
-
-  --shadow-panel: 0 1px 0 0 rgb(255 255 255 / 0.7) inset,
-    0 20px 44px -34px rgb(38 28 12 / 0.45);
-  --shadow-lift: 0 26px 60px -38px rgb(38 28 12 / 0.42), 0 0 0 1px var(--color-line-hi);
+/* Radar sweep for SVG instruments and fallbacks. */
+@keyframes sweep {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-html[data-theme="light"] .grain::after {
-  opacity: 0.05;
-  mix-blend-mode: multiply;
+/* Slow scanline descent across instrument panels. */
+@keyframes scan {
+  0% {
+    transform: translate3d(0, -20%, 0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.5;
+  }
+  88% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate3d(0, 520%, 0);
+    opacity: 0;
+  }
 }
 
-html[data-theme="light"] ::selection {
-  background: color-mix(in oklab, var(--color-signal) 22%, transparent);
+/* Phosphor monitors are never quite still. */
+@keyframes flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  46% {
+    opacity: 0.96;
+  }
+  48% {
+    opacity: 0.88;
+  }
+  50% {
+    opacity: 0.98;
+  }
 }
 
 @layer base {
@@ -157,8 +167,16 @@ html[data-theme="light"] ::selection {
     scrollbar-color: var(--color-line-hi) transparent;
   }
 
+  /* The void is a place, not a fill: two off-stage light sources over a
+     hairline engineering grid. Cheap enough to paint once. */
   body {
     background-color: var(--color-void);
+    background-image:
+      radial-gradient(1100px 520px at 50% -8%, rgb(79 227 161 / 0.05), transparent 68%),
+      radial-gradient(900px 480px at 88% 12%, rgb(107 167 245 / 0.04), transparent 66%),
+      linear-gradient(to right, var(--color-grid) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--color-grid) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 72px 72px, 72px 72px;
     color: var(--color-ink);
     font-family: var(--font-sans);
     font-feature-settings: "ss01" 1, "cv05" 1;
@@ -218,6 +236,7 @@ html[data-theme="light"] ::selection {
   background: linear-gradient(180deg, var(--color-panel-hi) 0%, var(--color-panel) 100%);
   border: 1px solid var(--color-line);
   border-radius: var(--radius-panel);
+  backdrop-filter: blur(10px);
 }
 
 @utility label-xs {
@@ -230,6 +249,35 @@ html[data-theme="light"] ::selection {
 
 @utility text-glow {
   text-shadow: 0 0 28px color-mix(in oklab, var(--color-signal) 35%, transparent);
+}
+
+/* Oversized display type pushed wide on the Bricolage axes. */
+@utility display-wide {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 48, "wdth" 125;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+/* Instrument numerals — the 01 … 07 section index. */
+@utility numeral {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 40, "wdth" 120;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: color-mix(in oklab, var(--color-terrain) 85%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Phosphor rim — the hover language of every interactive surface. */
+@utility volt-rim {
+  transition: box-shadow 0.35s ease, border-color 0.35s ease, transform 0.35s ease;
+}
+
+.volt-rim:hover,
+.volt-rim:focus-visible {
+  border-color: color-mix(in oklab, var(--color-signal) 38%, var(--color-line));
+  box-shadow: var(--shadow-volt);
 }
 
 /* Corner ticks — the recurring "engineering drawing" motif. */
@@ -271,6 +319,25 @@ html[data-theme="light"] ::selection {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
+/* CRT whisper on instrument surfaces. Decorative; keep it faint. */
+@utility scanlines {
+  position: relative;
+  overflow: hidden;
+}
+
+.scanlines::after {
+  content: "";
+  position: absolute;
+  inset: -30% 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgb(255 255 255 / 0.022) 0 1px,
+    transparent 1px 3px
+  );
+  animation: var(--animate-scan);
+}
+
 /* ------------------------------------------------------------------ *
  * Scroll-reveal
  *
@@ -282,10 +349,10 @@ html[data-theme="light"] ::selection {
 @media (scripting: enabled) {
   .reveal {
     opacity: 0;
-    transform: translate3d(0, 18px, 0);
+    transform: translate3d(0, 16px, 0);
     transition:
-      opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
-      transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      opacity 0.7s ease,
+      transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
     transition-delay: var(--reveal-delay, 0ms);
     will-change: opacity, transform;
   }
@@ -293,51 +360,88 @@ html[data-theme="light"] ::selection {
   .reveal[data-visible="true"] {
     opacity: 1;
     transform: none;
+    will-change: auto;
+  }
+
+  /* Mask wipe — headings rise out of their own band. */
+  .reveal-mask {
+    clip-path: inset(0 0 100% 0);
+    transition:
+      clip-path 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 0.5s ease,
+      transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .reveal-mask[data-visible="true"] {
+    clip-path: inset(-20% 0 -20% 0);
+  }
+
+  /* Instrument rows slide in from the rail. */
+  .reveal-x {
+    transform: translate3d(-18px, 0, 0);
+  }
+
+  .reveal-x[data-visible="true"] {
+    transform: none;
   }
 }
 
-
-@media (prefers-reduced-motion: reduce) {
-  .reveal {
+@media (scripting: enabled) and (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal-mask,
+  .reveal-x {
     opacity: 1;
     transform: none;
+    clip-path: none;
     transition: none;
   }
 }
 
 /* Short viewports: the mobile sheet scrolls rather than running off-screen. */
 @layer utilities {
-  @media (max-height: 660px) {
+  .scroll-slim {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-hi) transparent;
+  }
+
+  .scroll-slim::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scroll-slim::-webkit-scrollbar-thumb {
+    background: var(--color-line-hi);
+    border-radius: 999px;
+  }
+
+  .scroll-slim::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  @media (max-height: 46rem) {
     .sheet-scroll {
-      max-height: calc(100dvh - 4.5rem);
+      max-height: min(70vh, 34rem);
       overflow-y: auto;
     }
   }
 }
 
-/* Flow animation is opt-in so reduced-motion users get a static diagram. */
-@media (prefers-reduced-motion: reduce) {
-  .motion-only {
-    display: none;
+/* ------------------------------------------------------------------ *
+ * Drawn instruments — SVG strokes that draw themselves in on scroll.
+ * Opt-in via `.motion-only` so reduced-motion users keep static diagrams.
+ * ------------------------------------------------------------------ */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .motion-only .draw,
+  .motion-only.draw {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: draw 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: var(--draw-delay, 0ms);
   }
 }
 
-/* Thin, dark scrollbars in scrollable panels. */
-.scroll-slim {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-line-hi) transparent;
-}
-
-.scroll-slim::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.scroll-slim::-webkit-scrollbar-thumb {
-  background: var(--color-line-hi);
-  border-radius: 99px;
-}
-
-.scroll-slim::-webkit-scrollbar-track {
-  background: transparent;
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
 }

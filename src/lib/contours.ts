@@ -48,6 +48,15 @@ function fbm(x: number, y: number): number {
   return sum;
 }
 
+/**
+ * Pure sampler over the shared value-noise field. The WebGL terrain in the
+ * hero render layer is displaced with this, so the synthetic landscape and the
+ * SVG contour map read as the same geography. Four-octave fbm → [0, 0.9375).
+ */
+export function sampleNoise(x: number, y: number): number {
+  return fbm(x, y);
+}
+
 export type ContourRing = { d: string; level: number };
 
 /**

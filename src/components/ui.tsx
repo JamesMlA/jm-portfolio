@@ -1,6 +1,7 @@
 "use client";
 
 import type { ComponentType, ReactNode } from "react";
+import { useI18n } from "./i18n";
 import { cx } from "@/lib/utils";
 
 export { Reveal } from "./reveal";
@@ -11,44 +12,80 @@ export type IconComponent = ComponentType<{
   strokeWidth?: number;
 }>;
 
-export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
+export function Eyebrow({
+  index,
+  children,
+  className,
+}: {
+  index?: string;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <p className={cx("label-xs flex items-center gap-3", className)}>
-      <span className="h-px w-6 bg-line-hi" aria-hidden />
+      {index ? (
+        <span aria-hidden className="numeral text-base leading-none text-signal/70">
+          {index}
+        </span>
+      ) : (
+        <span
+          aria-hidden
+          className="size-1.5 rounded-full bg-signal shadow-[0_0_10px_var(--color-volt)]"
+        />
+      )}
       {children}
     </p>
   );
 }
 
 export function SectionHead({
+  index,
   eyebrow,
   title,
   lead,
   align = "left",
   wide = false,
 }: {
+  index?: string;
   eyebrow: string;
   title: string;
   lead?: string;
   align?: "left" | "center";
   wide?: boolean;
 }) {
+  const centered = align === "center";
   return (
     <header
       className={cx(
-        "flex flex-col gap-4",
-        align === "center" && "items-center text-center",
+        "flex flex-col gap-5",
+        centered && "items-center text-center",
       )}
     >
-      <Eyebrow>{eyebrow}</Eyebrow>
-      <h2 className="max-w-3xl text-balance text-3xl leading-[1.08] text-ink sm:text-4xl md:text-[2.9rem]">
+      <div
+        className={cx(
+          "flex w-full items-center gap-4",
+          centered && "justify-center",
+        )}
+      >
+        <Eyebrow index={index}>{eyebrow}</Eyebrow>
+        <span
+          aria-hidden
+          className="h-px flex-1 bg-gradient-to-r from-line-hi to-transparent"
+        />
+      </div>
+      <h2
+        className={cx(
+          "display-wide text-[clamp(2.1rem,5vw,3.6rem)] leading-[1.02]",
+          wide && "text-[clamp(2.4rem,6vw,4.4rem)]",
+        )}
+      >
         {title}
       </h2>
       {lead ? (
         <p
           className={cx(
-            "text-pretty text-[0.95rem] leading-relaxed text-mute",
-            wide ? "max-w-3xl" : "max-w-2xl",
+            "max-w-2xl text-[0.98rem] leading-relaxed text-mute text-pretty",
+            centered && "mx-auto",
           )}
         >
           {lead}
@@ -63,33 +100,34 @@ export function StatusDot({
   pulse = true,
   className,
 }: {
-  tone?: "signal" | "amber" | "azure" | "dim";
+  tone?: "signal" | "amber" | "rose";
   pulse?: boolean;
   className?: string;
 }) {
-  const color =
-    tone === "signal"
-      ? "bg-signal"
-      : tone === "amber"
-        ? "bg-amber"
-        : tone === "azure"
-          ? "bg-azure"
-          : "bg-faint";
+  const fill =
+    tone === "amber" ? "bg-amber" : tone === "rose" ? "bg-rose" : "bg-signal";
   return (
-    <span className={cx("relative inline-flex size-1.5 shrink-0", className)} aria-hidden>
-      <span className={cx("absolute inset-0 rounded-full", color)} />
-      {/*
-        Static halo, not an animation: the whole page shares one pulsing dot
-        (the timeline's current role) so the motion stays meaningful.
-      */}
+    <span className={cx("relative inline-flex size-2", className)}>
       {pulse ? (
         <span
-          className={cx("absolute -inset-1 rounded-full opacity-20", color)}
+          aria-hidden
+          className={cx(
+            "absolute inset-0 animate-pulse-ring rounded-full opacity-60",
+            fill,
+          )}
         />
       ) : null}
+      <span className={cx("relative size-2 rounded-full", fill)} />
     </span>
   );
 }
+
+const chipTone = {
+  neutral: "border-line-hi bg-panel/60 text-mute",
+  signal: "border-signal/30 bg-signal-deep/60 text-signal-text",
+  amber: "border-amber/30 bg-amber/10 text-amber",
+  azure: "border-azure/30 bg-azure/10 text-azure",
+} as const;
 
 export function Chip({
   children,
@@ -97,19 +135,14 @@ export function Chip({
   className,
 }: {
   children: ReactNode;
-  tone?: "neutral" | "signal" | "amber";
+  tone?: keyof typeof chipTone;
   className?: string;
 }) {
-  const tones = {
-    neutral: "border-line text-mute hover:border-line-hi hover:text-ink",
-    signal: "border-signal-dim/60 bg-signal-deep/50 text-signal-text",
-    amber: "border-amber/30 bg-amber/5 text-amber",
-  } as const;
   return (
     <span
       className={cx(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-2xs tracking-wide whitespace-nowrap transition-colors",
-        tones[tone],
+        "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono text-2xs tracking-wide",
+        chipTone[tone],
         className,
       )}
     >
@@ -118,6 +151,7 @@ export function Chip({
   );
 }
 
+/** Instrument panel header — phosphor dots, mono title, optional readout. */
 export function PanelBar({
   title,
   icon: Icon,
@@ -130,18 +164,35 @@ export function PanelBar({
   meta?: string;
 }) {
   return (
-    <div className="flex items-center gap-3 border-b border-line px-4 py-2.5">
-      {Icon ? <Icon className="size-3.5 shrink-0 text-dim" strokeWidth={1.75} /> : null}
-      <span className="font-mono text-2xs tracking-[0.16em] text-dim uppercase">
-        {title}
+    <div className="flex items-center gap-3 border-b border-line px-4 py-3">
+      <span aria-hidden className="flex items-center gap-1">
+        <span className="size-1.5 rounded-full bg-signal/80" />
+        <span className="size-1.5 rounded-full bg-amber/50" />
+        <span className="size-1.5 rounded-full bg-rose/40" />
       </span>
-      {meta ? (
-        <span className="truncate font-mono text-2xs text-faint">{meta}</span>
+      {Icon ? (
+        <Icon className="size-3.5 text-dim" strokeWidth={1.6} />
       ) : null}
-      <div className="ml-auto flex items-center gap-2">{right}</div>
+      <p className="min-w-0 truncate font-mono text-2xs tracking-wide text-ink">
+        {title}
+      </p>
+      {meta ? (
+        <span className="hidden font-mono text-2xs text-faint sm:inline">
+          {meta}
+        </span>
+      ) : null}
+      {right ? <div className="ml-auto flex shrink-0 items-center gap-2">{right}</div> : null}
     </div>
   );
 }
+
+const actionVariant = {
+  primary:
+    "border-signal/40 bg-signal-deep text-signal-text hover:border-signal hover:bg-signal/10",
+  secondary:
+    "border-line-hi text-ink hover:border-signal/50 hover:text-signal",
+  ghost: "border-transparent text-dim hover:text-signal",
+} as const;
 
 export function ActionLink({
   href,
@@ -152,54 +203,35 @@ export function ActionLink({
   onClick,
   className,
 }: {
-  href?: string;
+  href: string;
   children: ReactNode;
   icon?: IconComponent;
-  variant?: "primary" | "ghost" | "quiet";
+  variant?: keyof typeof actionVariant;
   external?: boolean;
   onClick?: () => void;
   className?: string;
 }) {
-  const styles = {
-    primary:
-      "group relative overflow-hidden border-signal/40 bg-signal-deep text-signal-text-text hover:border-signal hover:bg-signal/10",
-    ghost: "border-line-hi text-ink hover:border-signal/50 hover:text-signal",
-    quiet: "border-transparent text-mute hover:text-ink",
-  } as const;
-
-  const body = (
-    <>
-      {Icon ? (
-        <Icon
-          className="size-4 shrink-0 transition-transform duration-300 group-hover:-translate-y-px"
-          strokeWidth={1.75}
-        />
-      ) : null}
-      <span>{children}</span>
-    </>
-  );
-
-  const base = cx(
-    "group inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2.5 font-mono text-xs tracking-wide transition-all duration-300",
-    styles[variant],
-    className,
-  );
-
-  if (!href) {
-    return (
-      <button type="button" onClick={onClick} className={base}>
-        {body}
-      </button>
-    );
-  }
-
+  const { d } = useI18n();
   return (
     <a
       href={href}
-      className={base}
-      {...(external ? { target: "_blank", rel: "noreferrer noopener" } : {})}
+      onClick={onClick}
+      target={external ? "_blank" : undefined}
+      rel={external ? "noreferrer noopener" : undefined}
+      className={cx(
+        "group volt-rim inline-flex min-h-6 items-center gap-2 rounded-lg border px-4.5 py-3 font-mono text-xs tracking-wide transition-colors duration-300",
+        actionVariant[variant],
+        className,
+      )}
     >
-      {body}
+      {children}
+      {Icon ? (
+        <Icon
+          className="size-3.5 transition-transform duration-300 group-hover:translate-x-1"
+          strokeWidth={1.75}
+        />
+      ) : null}
+      {external ? <span className="sr-only">{d.a11y.external}</span> : null}
     </a>
   );
 }
@@ -211,21 +243,20 @@ export function Section({
   className,
   bleed = false,
 }: {
-  id: string;
+  id?: string;
   children: ReactNode;
   className?: string;
   bleed?: boolean;
 }) {
   return (
-    <section
-      id={id}
-      className={cx(
-        "relative scroll-mt-24 border-t border-line",
-        !bleed && "px-5 py-20 sm:px-8 md:py-28",
-        className,
-      )}
-    >
-      <div className={cx(!bleed && "mx-auto w-full max-w-[76rem]")}>{children}</div>
+    <section id={id} className={cx("relative border-t border-line", className)}>
+      <div
+        className={cx(
+          !bleed && "mx-auto w-full max-w-[76rem] px-5 py-16 sm:px-8 md:py-24",
+        )}
+      >
+        {children}
+      </div>
     </section>
   );
 }

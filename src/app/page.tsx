@@ -1,6 +1,5 @@
 import { Hero } from "@/components/hero";
 import { Topology } from "@/components/topology";
-import { TerrainDefs } from "@/components/terrain-field";
 import { About } from "@/components/about";
 import { Experience } from "@/components/experience";
 import { Projects } from "@/components/projects";
@@ -25,7 +24,6 @@ export default async function Home() {
         // Static, self-authored structured data — no user input.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <TerrainDefs />
       <Hero />
       <section aria-label="Delivery pipeline" className="border-t border-line bg-abyss">
         <div className="mx-auto w-full max-w-[76rem] px-5 py-12 sm:px-8 md:py-16">

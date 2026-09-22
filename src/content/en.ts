@@ -1,6 +1,3 @@
-/** Command-palette grouping keys — shared contract between data and UI. */
-export type PaletteGroup = "navigate" | "actions" | "theme" | "language";
-
 export const en = {
   meta: {
     locale: "en",
@@ -22,10 +19,7 @@ export const en = {
     },
     menu: "Menu",
     close: "Close",
-    skip: "Skip to content",
-    palette: "Command menu",
     language: "Language",
-    themeGroup: "Interface",
   },
 
   hero: {
@@ -37,15 +31,13 @@ export const en = {
     ctaSecondary: "Get in touch",
     terminalTitle: "james@ops — zsh",
     terminalHint: "Replay",
-    scroll: "Scroll",
+    note: "Nothing here is a real production metric — it is a visual story.",
     linkedin: "LinkedIn",
     github: "GitHub",
     email: "Email",
     photoAlt: "James Maradiaga",
     stats: {
-      title: "Cluster",
       region: "gt-central-1",
-      uptime: "status",
       healthy: "all systems steady",
     },
   },
@@ -99,6 +91,7 @@ notes: {
     inspect: "Inspect node",
     paused: "Paused",
     running: "Flowing",
+    feedback: "feedback",
   },
 
   about: {
@@ -132,6 +125,7 @@ notes: {
       "Observability, security hardening and cost awareness",
       "Local AI infrastructure and production-oriented MLOps",
     ],
+    stack: ["Linux", "Kubernetes", "Terraform", "AWS", "Python", "Go"],
   },
 
   experience: {
@@ -139,10 +133,9 @@ notes: {
     title: "A progression from support tickets to platform ownership.",
     lead: "Ten years ago I was fixing workstations. Today I lead the infrastructure other engineers ship on. The through-line is the same: understand the system, then remove the parts that hurt.",
     current: "Current",
-    role: "Role",
-    focus: "Focus",
     older: "Earlier",
     focusLabel: "Focus areas",
+    remote: "remote-friendly",
   },
 
   skills: {
@@ -213,6 +206,8 @@ notes: {
     liveNote: "Live data",
     stale: "Live data unavailable — showing the static fallback.",
     languages: "Primary languages",
+    less: "less",
+    more: "more",
   },
 
   contact: {
@@ -236,54 +231,9 @@ notes: {
     ],
   },
 
-  palette: {
-    title: "Command menu",
-    placeholder: "Type a command or search…",
-    empty: "No matching command.",
-    groups: { navigate: "Navigate", actions: "Actions", theme: "Interface", language: "Language" } satisfies Record<PaletteGroup, string>,
-    commands: {
-      home: "Go to home",
-      about: "Go to about",
-      experience: "Go to experience",
-      projects: "Go to projects",
-      skills: "Go to skills",
-      github: "Go to GitHub",
-      contact: "Go to contact",
-      email: "Copy email address",
-      theme: "Switch to light interface",
-      themeDark: "Switch to dark interface",
-      langEs: "Cambiar a Español",
-      langEn: "Switch to English",
-      status: "Run status check",
-      terminal: "Replay hero terminal",
-      top: "Back to top",
-    },
-  },
-
-  status: {
-    title: "status",
-    checking: "Checking endpoints…",
-    endpoint: "Endpoint",
-    region: "Region",
-    allUp: "All endpoints answering",
-    oneDown: "One endpoint unreachable",
-    responseTime: "Response",
-    footer: "Nothing here is a real production metric — it is a visual story.",
-    ok200: "200 OK",
-    offline: "offline",
-  },
-
-  egg: {
-    hint: "Press ⌘K for the console",
-    unlocked: "You found the console. Try: status, theme, lang, or g then a section key.",
-    konami: "Pipeline burst — deploying straight to production.",
-    terminalFound: "Hidden command found",
-  },
-
   footer: {
     built: "Designed and built by James Maradiaga",
     stack: "Next.js · TypeScript · Tailwind",
-    shortcuts: "Shortcuts",
     forAgents: "For agents",
     forAgentsIndex: "index",
     forAgentsMarkdown: "markdown",
@@ -294,8 +244,6 @@ notes: {
 
   a11y: {
     external: "opens in a new tab",
-    toggleMenu: "Toggle navigation",
-    currentSection: "Current section",
   },
 };
 

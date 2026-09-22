@@ -3,10 +3,6 @@ import { Bricolage_Grotesque, Instrument_Sans, JetBrains_Mono } from "next/font/
 import "./globals.css";
 import { site } from "@/content/site";
 import { Providers } from "@/components/providers";
-import { CommandPalette } from "@/components/command-palette";
-import { StatusMonitor } from "@/components/status-monitor";
-import { Konami } from "@/components/konami";
-import { ShortcutHint } from "@/components/shortcut-hint";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 
@@ -107,11 +103,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#05080a" },
-    { media: "(prefers-color-scheme: light)", color: "#f5f2ec" },
-  ],
-  colorScheme: "dark light",
+  // Mission control is dark-only; the light interface was removed with the
+  // theme toggle.
+  themeColor: "#05080a",
+  colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
 };
@@ -120,16 +115,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      data-theme="dark"
       suppressHydrationWarning
       className={`${bricolage.variable} ${instrument.variable} ${jetbrains.variable} h-full antialiased`}
     >
       <head>
         <script
-          // Sets the stored interface before paint so there is no theme flash.
+          // Applies the stored language before paint so switching is instant
+          // and hydration never disagrees with the DOM.
           dangerouslySetInnerHTML={{
             __html:
-              "try{var t=localStorage.getItem('jm.theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t}var g=localStorage.getItem('jm.lang');if(g==='es'||g==='en'){document.documentElement.lang=g}}catch(e){}",
+              "try{var g=localStorage.getItem('jm.lang');if(g==='es'||g==='en'){document.documentElement.lang=g}}catch(e){}",
           }}
         />
       </head>
@@ -144,10 +139,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Nav />
           <main id="content">{children}</main>
           <Footer />
-          <CommandPalette />
-          <StatusMonitor />
-          <Konami />
-          <ShortcutHint />
         </Providers>
       </body>
     </html>

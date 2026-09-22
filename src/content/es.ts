@@ -25,10 +25,7 @@ export const es: Dictionary = {
     },
     menu: "Menú",
     close: "Cerrar",
-    skip: "Ir al contenido",
-    palette: "Menú de comandos",
     language: "Idioma",
-    themeGroup: "Interfaz",
   },
 
   hero: {
@@ -40,15 +37,13 @@ export const es: Dictionary = {
     ctaSecondary: "Hablemos",
     terminalTitle: "james@ops — zsh",
     terminalHint: "Repetir",
-    scroll: "Scroll",
+    note: "Nada de esto es una métrica de producción real — es una historia visual.",
     linkedin: "LinkedIn",
     github: "GitHub",
     email: "Correo",
     photoAlt: "James Maradiaga",
     stats: {
-      title: "Clúster",
       region: "gt-central-1",
-      uptime: "estado",
       healthy: "todo estable",
     },
   },
@@ -102,6 +97,7 @@ notes: {
     inspect: "Inspeccionar nodo",
     paused: "En pausa",
     running: "En flujo",
+    feedback: "feedback",
   },
 
   about: {
@@ -135,6 +131,7 @@ notes: {
       "Observabilidad, hardening de seguridad y visibilidad de costos",
       "Infraestructura local de IA y MLOps orientado a producción",
     ],
+    stack: ["Linux", "Kubernetes", "Terraform", "AWS", "Python", "Go"],
   },
 
   experience: {
@@ -142,10 +139,9 @@ notes: {
     title: "De los tickets de soporte a ser dueño de la plataforma.",
     lead: "Hace diez años reparaba equipos de escritorio. Hoy lidero la infraestructura sobre la que otros ingenieros despliegan. El hilo conductor es el mismo: entender el sistema y luego quitar las partes que duelen.",
     current: "Actual",
-    role: "Rol",
-    focus: "Enfoque",
     older: "Anterior",
     focusLabel: "Áreas de enfoque",
+    remote: "trabajo remoto",
   },
 
   skills: {
@@ -216,6 +212,8 @@ notes: {
     liveNote: "Datos en vivo",
     stale: "Datos en vivo no disponibles — se muestra el respaldo estático.",
     languages: "Lenguajes principales",
+    less: "menos",
+    more: "más",
   },
 
   contact: {
@@ -239,54 +237,9 @@ notes: {
     ],
   },
 
-  palette: {
-    title: "Menú de comandos",
-    placeholder: "Escribe un comando o busca…",
-    empty: "Ningún comando coincide.",
-    groups: { navigate: "Navegar", actions: "Acciones", theme: "Interfaz", language: "Idioma" },
-    commands: {
-      home: "Ir al inicio",
-      about: "Ir al perfil",
-      experience: "Ir a experiencia",
-      projects: "Ir a proyectos",
-      skills: "Ir a tecnologías",
-      github: "Ir a GitHub",
-      contact: "Ir a contacto",
-      email: "Copiar correo",
-      theme: "Cambiar a interfaz clara",
-      themeDark: "Cambiar a interfaz oscura",
-      langEs: "Cambiar a Español",
-      langEn: "Switch to English",
-      status: "Ejecutar chequeo de estado",
-      terminal: "Repetir la terminal del hero",
-      top: "Volver arriba",
-    },
-  },
-
-  status: {
-    title: "estado",
-    checking: "Consultando endpoints…",
-    endpoint: "Endpoint",
-    region: "Región",
-    allUp: "Todos los endpoints responden",
-    oneDown: "Un endpoint no responde",
-    responseTime: "Respuesta",
-    footer: "Nada de esto es una métrica de producción real — es una historia visual.",
-    ok200: "200 OK",
-    offline: "sin conexión",
-  },
-
-  egg: {
-    hint: "⌘K para abrir la consola",
-    unlocked: "Encontraste la consola. Prueba: status, theme, lang, o g y luego la tecla de una sección.",
-    konami: "Ráfaga de pipeline — despliegue directo a producción.",
-    terminalFound: "Comando oculto encontrado",
-  },
-
   footer: {
     built: "Diseñado y construido por James Maradiaga",
     stack: "Next.js · TypeScript · Tailwind",
-    shortcuts: "Atajos",
     forAgents: "Para agentes",
     forAgentsIndex: "índice",
     forAgentsMarkdown: "markdown",
@@ -297,7 +250,5 @@ notes: {
 
   a11y: {
     external: "abre en una pestaña nueva",
-    toggleMenu: "Abrir o cerrar la navegación",
-    currentSection: "Sección actual",
   },
 };

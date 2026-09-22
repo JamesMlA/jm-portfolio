@@ -1,14 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowRight, ArrowUpRight, Mail, MapPin } from "lucide-react";
+import dynamic from "next/dynamic";
+import { ArrowUpRight, Mail, MapPin } from "lucide-react";
 import { useI18n } from "./i18n";
 import { GithubIcon, LinkedinIcon } from "./brand-icons";
 import { HeroTerminal } from "./hero-terminal";
-import { TerrainField } from "./terrain-field";
-import { StatusDot } from "./ui";
+import { ActionLink, StatusDot } from "./ui";
 import { site } from "@/content/site";
 import { cx, localTime } from "@/lib/utils";
+
+// The WebGL terrain mounts after first paint — the headline never waits on it.
+const HeroScene = dynamic(
+  () => import("./render/hero-scene").then((m) => m.HeroScene),
+  { ssr: false },
+);
 
 function LocalClock({ className }: { className?: string }) {
   const { d, lang } = useI18n();
@@ -38,12 +44,20 @@ export function Hero() {
   ];
 
   return (
-    <section id="home" className="relative overflow-hidden border-b border-line">
-      {/* substrate: the contour map of the system, generated at build time */}
-      <TerrainField className="pointer-events-none absolute inset-0 h-full w-full" />
+    <section
+      id="home"
+      className="relative flex min-h-[92vh] flex-col justify-center overflow-hidden border-b border-line"
+    >
+      {/* the synthetic landscape, rendered: terrain, radar, dust */}
+      <HeroScene className="animate-fade" />
+      {/* scrim so the instrument field never fights the type */}
       <div
         aria-hidden
-        className="animate-drift pointer-events-none absolute -top-40 left-1/2 h-[42rem] w-[42rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,color-mix(in_oklab,var(--color-signal)_10%,transparent),transparent_65%)] blur-2xl"
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(100deg,var(--color-void)_24%,color-mix(in_oklab,var(--color-void)_55%,transparent)_44%,color-mix(in_oklab,var(--color-void)_10%,transparent)_66%,transparent_88%)]"
+      />
+      <div
+        aria-hidden
+        className="animate-drift pointer-events-none absolute -top-40 left-1/3 h-[42rem] w-[42rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,color-mix(in_oklab,var(--color-signal)_10%,transparent),transparent_65%)] blur-2xl"
       />
 
       <div className="relative mx-auto w-full max-w-[76rem] px-5 pt-28 pb-16 sm:px-8 sm:pt-32 md:pt-36 md:pb-20">
@@ -72,7 +86,9 @@ export function Hero() {
                 <span className="absolute -right-0.5 -bottom-0.5 size-3 rounded-full border-2 border-void bg-signal" />
               </div>
               <div className="min-w-0">
-                <p className="font-display text-[0.98rem] leading-tight text-ink">{site.name}</p>
+                <p className="display-wide text-[0.98rem] leading-tight text-ink">
+                  {site.name}
+                </p>
                 <p className="mt-0.5 font-mono text-2xs tracking-wide text-dim">
                   <span className="text-signal">@</span>
                   {site.handle} · {d.meta.tagline}
@@ -84,7 +100,7 @@ export function Hero() {
               </div>
             </div>
 
-            <h1 className="animate-rise mt-8 text-[2.1rem] leading-[1.05] tracking-[-0.03em] text-balance [animation-delay:220ms] sm:text-5xl md:text-[3.4rem]">
+            <h1 className="animate-rise display-wide mt-8 text-[clamp(2.3rem,5.6vw,4.2rem)] leading-[1.02] text-balance [animation-delay:220ms]">
               {d.hero.headline}
             </h1>
 
@@ -93,20 +109,14 @@ export function Hero() {
             </p>
 
             <div className="animate-rise mt-9 flex flex-wrap items-center gap-3 [animation-delay:380ms]">
-              <a
-                href="#projects"
-                className="group inline-flex min-h-6 items-center gap-2 rounded-lg border border-signal/40 bg-signal-deep px-4.5 py-3 font-mono text-xs tracking-wide text-signal-text transition-all duration-300 hover:border-signal hover:bg-signal/10"
-              >
-                {d.hero.ctaPrimary}
-                <ArrowRight className="size-3.5 transition-transform duration-300 group-hover:translate-x-1" />
-              </a>
-              <a
+              <ActionLink href="#projects">{d.hero.ctaPrimary}</ActionLink>
+              <ActionLink
                 href="#contact"
-                className="group inline-flex items-center gap-2 rounded-lg border border-line-hi px-4.5 py-3 font-mono text-xs tracking-wide text-ink transition-all duration-300 hover:border-signal/50 hover:text-signal"
+                variant="secondary"
+                icon={ArrowUpRight}
               >
                 {d.hero.ctaSecondary}
-                <ArrowUpRight className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-              </a>
+              </ActionLink>
             </div>
 
             <ul className="animate-rise mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-line pt-6 [animation-delay:460ms]">
@@ -122,7 +132,9 @@ export function Hero() {
                     <span className="border-b border-transparent pb-0.5 transition-colors group-hover:border-signal/40">
                       {label}
                     </span>
-                    <span className="sr-only">{d.a11y.external}</span>
+                    {!href.startsWith("mailto:") ? (
+                      <span className="sr-only">{d.a11y.external}</span>
+                    ) : null}
                   </a>
                 </li>
               ))}
@@ -134,7 +146,7 @@ export function Hero() {
             </ul>
           </div>
 
-          {/* ---------- right: live terminal ---------- */}
+          {/* ---------- right: mission log ---------- */}
           <div className="animate-rise lg:col-span-5 xl:col-span-6 [animation-delay:320ms]">
             <HeroTerminal />
           </div>
