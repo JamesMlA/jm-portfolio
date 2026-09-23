@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, Instrument_Sans, JetBrains_Mono } from "next/font/google";
+import { Instrument_Serif, Instrument_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { site } from "@/content/site";
 import { Providers } from "@/components/providers";
@@ -7,15 +7,15 @@ import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 
 /**
- * Display: Bricolage Grotesque — variable, slightly engineered, uncommon.
- * Body: Instrument Sans — quiet neutral with real personality in the italics.
- * Mono: JetBrains Mono — the instrumentation voice of the original site.
+ * Display: Instrument Serif — light, literary, huge titles (CONTEXT.md "Type").
+ * Body: Instrument Sans — quiet neutral.
+ * Mono: JetBrains Mono — the 8px micro-labels.
  */
-const bricolage = Bricolage_Grotesque({
-  variable: "--font-bricolage",
+const serif = Instrument_Serif({
+  variable: "--font-serif",
   subsets: ["latin"],
-  display: "swap",
-  axes: ["opsz", "wdth"],
+  weight: "400",
+  style: ["normal", "italic"],
 });
 
 const instrument = Instrument_Sans({
@@ -115,7 +115,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${bricolage.variable} ${instrument.variable} ${jetbrains.variable} h-full antialiased`}
+      className={`${serif.variable} ${instrument.variable} ${jetbrains.variable} h-full antialiased`}
     >
       <head>
         <script

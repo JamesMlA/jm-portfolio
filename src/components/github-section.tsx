@@ -2,20 +2,25 @@
 
 import { useMemo } from "react";
 import { useI18n } from "./i18n";
-import { Headline, Kicker, Lead, Reveal, Section, Stat, Tag, TextLink } from "./ui";
+import { Headline, Kicker, Reveal, Section, Stat, Tag, TextLink } from "./ui";
 import type { ContributionDay, GithubData } from "@/lib/github";
 import { site } from "@/content/site";
 import { formatYearMonth } from "@/lib/utils";
 
-/* Sky-blue intensity ramp — five buckets of Apple's link blue, not green. */
+/* Deep-green intensity ramp — five buckets of #0a6b45 on the cream page. */
 const LEVEL_FILL = [
-  "color-mix(in oklab, var(--text) 8%, transparent)",
-  "color-mix(in oklab, var(--color-sky) 22%, transparent)",
-  "color-mix(in oklab, var(--color-sky) 45%, transparent)",
-  "color-mix(in oklab, var(--color-sky) 70%, transparent)",
-  "var(--color-sky)",
+  "color-mix(in oklab, var(--color-green-ink) 8%, transparent)",
+  "color-mix(in oklab, var(--color-green-ink) 22%, transparent)",
+  "color-mix(in oklab, var(--color-green-ink) 45%, transparent)",
+  "color-mix(in oklab, var(--color-green-ink) 70%, transparent)",
+  "var(--color-green-ink)",
 ];
 
+/**
+ * Open source on the cream Info page: one anchor, the stat row, the live
+ * contribution calendar, repositories as quiet rows and the languages.
+ * The honesty labels (live / stale) stay visible either way.
+ */
 export function GithubSection({ data }: { data: GithubData }) {
   const { d, lang } = useI18n();
 
@@ -42,16 +47,24 @@ export function GithubSection({ data }: { data: GithubData }) {
   ];
 
   return (
-    <Section id="github" tone="gray">
-      {/* ---- beat head ---- */}
+    <Section id="github" tone="light">
+      {/* ---- the anchor ---- */}
       <Reveal>
-        <Kicker>{d.github.eyebrow.replace(/^\d+\s*—\s*/, "")}</Kicker>
+        <Kicker className="text-soft">
+          {d.github.eyebrow.replace(/^\d+\s*—\s*/, "")}
+        </Kicker>
+      </Reveal>
+      <Reveal delay={80}>
         <Headline>{d.github.title}</Headline>
-        <Lead>{d.github.lead}</Lead>
+      </Reveal>
+      <Reveal delay={160}>
+        <p className="mt-5 max-w-[46rem] text-[17px] leading-relaxed text-soft">
+          {d.github.lead}
+        </p>
       </Reveal>
 
-      {/* ---- profile stats — the tech-spec readout ---- */}
-      <Reveal delay={80} className="mt-16">
+      {/* ---- profile stats — the spec readout ---- */}
+      <Reveal delay={240} className="mt-14">
         <div className="grid gap-10 sm:grid-cols-3 lg:grid-cols-5">
           {stats.map((stat) => (
             <Stat key={stat.label} value={stat.value} label={stat.label} />
@@ -63,9 +76,9 @@ export function GithubSection({ data }: { data: GithubData }) {
       </Reveal>
 
       {/* ---- contribution activity ---- */}
-      <Reveal delay={120} className="mt-20">
+      <Reveal delay={320} className="mt-16">
         <div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2">
-          <h3 className="text-[21px] font-semibold tracking-tight">{d.github.activity}</h3>
+          <h3 className="kicker text-soft">{d.github.activity}</h3>
           <p className="text-[15px] text-soft">
             {data.totalLastYear.toLocaleString()} · {d.github.contributions}
           </p>
@@ -113,37 +126,40 @@ export function GithubSection({ data }: { data: GithubData }) {
         </div>
       </Reveal>
 
-      {/* ---- pinned repositories ---- */}
-      <Reveal delay={160} className="mt-20">
-        <h3 className="text-[21px] font-semibold tracking-tight">{d.github.repos}</h3>
+      {/* ---- repositories as quiet rows ---- */}
+      <Reveal delay={400} className="mt-16">
+        <h3 className="kicker text-soft">{d.github.repos}</h3>
         <p className="mt-2 text-[15px] text-soft">{d.github.reposNote}</p>
 
-        <ul className="mt-8 grid gap-6 sm:grid-cols-2">
+        <ul className="mt-6 border-t hairline">
           {data.repos.map((repo) => (
-            <li key={repo.name} className="flex flex-col rounded-[1.5rem] bg-white p-7">
-              <div className="flex flex-wrap items-center gap-3">
+            <li
+              key={repo.name}
+              className="grid gap-3 border-b hairline py-5 sm:grid-cols-[14rem_1fr] sm:gap-8"
+            >
+              <div>
                 <TextLink href={repo.href} external>
                   {repo.name}
                 </TextLink>
-                <Tag>{d.github.pinned}</Tag>
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-[13px] text-soft">
+                  <Tag>{d.github.pinned}</Tag>
+                  <Tag>{repo.language}</Tag>
+                  <span>
+                    {d.github.pushed} {formatYearMonth(repo.pushed, lang)}
+                  </span>
+                </div>
               </div>
-              <p className="mt-3 flex-1 text-[15px] leading-relaxed text-soft">
+              <p className="text-[15px] leading-relaxed text-soft">
                 {lang === "es" ? repo.descriptionEs : repo.descriptionEn}
               </p>
-              <div className="mt-5 flex flex-wrap items-center gap-3 text-[13px] text-soft">
-                <Tag>{repo.language}</Tag>
-                <span>
-                  {d.github.pushed} {formatYearMonth(repo.pushed, lang)}
-                </span>
-              </div>
             </li>
           ))}
         </ul>
       </Reveal>
 
       {/* ---- languages + action links ---- */}
-      <Reveal delay={200} className="mt-20">
-        <h3 className="text-[21px] font-semibold tracking-tight">{d.github.languages}</h3>
+      <Reveal delay={480} className="mt-16">
+        <h3 className="kicker text-soft">{d.github.languages}</h3>
         <ul className="mt-5 flex flex-wrap gap-2">
           {data.languages.map((language) => (
             <li key={language}>
@@ -152,7 +168,7 @@ export function GithubSection({ data }: { data: GithubData }) {
           ))}
         </ul>
 
-        <div className="mt-12 flex flex-wrap items-center gap-x-10 gap-y-2">
+        <div className="mt-10 flex flex-wrap items-center gap-x-10 gap-y-2">
           <TextLink href={site.links.github} external>
             {d.github.viewProfile}
           </TextLink>

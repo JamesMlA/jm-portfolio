@@ -16,7 +16,7 @@ export function Thinking() {
   return (
     <Section id="thinking" tone="light">
       <Reveal>
-        <Kicker>{kicker}</Kicker>
+        <Kicker className="text-soft">{kicker}</Kicker>
       </Reveal>
       <Reveal delay={70}>
         <Headline>{d.thinking.title}</Headline>

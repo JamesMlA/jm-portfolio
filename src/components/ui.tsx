@@ -118,36 +118,44 @@ export function Lead({
   );
 }
 
-/** Text link with a chevron that slides on hover. */
+/** Text link — default chevron, or the reference's quiet "> " press link. */
 export function TextLink({
   href,
   children,
   external,
+  variant = "default",
   className,
 }: {
   href: string;
   children: ReactNode;
   external?: boolean;
+  variant?: "default" | "press";
   className?: string;
 }) {
   const { d } = useI18n();
+  const press = variant === "press";
   return (
     <a
       href={href}
       target={external ? "_blank" : undefined}
       rel={external ? "noreferrer noopener" : undefined}
       className={cx(
-        "group inline-flex items-center gap-1 py-1 text-[17px] font-medium text-link transition-opacity hover:opacity-75",
+        press
+          ? "group inline-flex items-center gap-1.5 py-1 text-[13px] text-soft transition-colors hover:text-main"
+          : "group inline-flex items-center gap-1 py-1 text-[17px] font-medium text-link transition-opacity hover:opacity-75",
         className,
       )}
     >
+      {press ? <span aria-hidden>{">"}</span> : null}
       {children}
-      <span
-        aria-hidden
-        className="transition-transform duration-300 group-hover:translate-x-1"
-      >
-        {"›"}
-      </span>
+      {press ? null : (
+        <span
+          aria-hidden
+          className="transition-transform duration-300 group-hover:translate-x-1"
+        >
+          {"›"}
+        </span>
+      )}
       {external ? <span className="sr-only">{d.a11y.external}</span> : null}
     </a>
   );

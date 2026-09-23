@@ -1,28 +1,22 @@
 #!/usr/bin/env node
 /**
- * Deterministic, text-free poster art for the case studies.
- *
- * One 1600x1000 PNG per Project id (src/content/data.ts) written to
- * public/renders/<id>.png. Motif: mission-control instrumentation —
- * concentric noise-displaced contour rings over a hairline scan grid, with
- * telemetry tick rails and sparse particles. Palette from src/app/globals.css.
+ * Deterministic, text-free render panels for the work spine (CONTEXT.md
+ * "Render panel"): three artworks per case study — landscape (2400x1200),
+ * macro (1600x1000), field (1600x1000) — plus the favicon.
  *
  * Every random draw comes from a mulberry32 PRNG seeded with an FNV-1a hash of
- * the id, and all coordinates are rounded before formatting, so re-running the
- * script is byte-identical. Rasterization uses @resvg/resvg-js with system
- * font loading disabled — no fonts enter the pipeline, so the posters can
- * never contain text. The run also answers the browsers' unconditional
- * /favicon.ico probe: public/icon.svg rasterized into a single-entry ICO.
+ * "<id>-<kind>", and all coordinates are rounded before formatting, so
+ * re-running the script is byte-identical. Rasterization uses
+ * @resvg/resvg-js with system fonts disabled — no text can ever appear.
+ * Deliberately no full-canvas noise: it wrecks PNG size.
  *
  * Usage: npm run renders
  */
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Resvg } from "@resvg/resvg-js";
 
-const WIDTH = 1600;
-const HEIGHT = 1000;
 const OUT_DIR = join(
   dirname(fileURLToPath(import.meta.url)),
   "..",
@@ -30,19 +24,6 @@ const OUT_DIR = join(
   "renders",
 );
 
-/** Design tokens mirrored from src/app/globals.css (`@theme`). */
-const C = {
-  void: "#05080a",
-  panel: "#0a1116",
-  line: "#152229",
-  lineHi: "#1e3138",
-  terrain: "#3d5c66",
-  mint: "#4fe3a1",
-  amber: "#f0b45f",
-  azure: "#6ba7f5",
-};
-
-/** `projects` ids from src/content/data.ts, in document order. */
 const IDS = [
   "cloud-infrastructure",
   "kubernetes-platform",
@@ -51,16 +32,29 @@ const IDS = [
   "mlops",
 ];
 
-/** Accent rotation — the five read as a set but never share a signature pair. */
-const ACCENTS = [C.mint, C.amber, C.azure];
+const KIND_SIZE = {
+  landscape: { width: 2400, height: 1200 },
+  macro: { width: 1600, height: 1000 },
+  field: { width: 1600, height: 1000 },
+};
 
-/* ---------------------------------------------------------------- PRNG -- */
+/** Design tokens mirrored from src/app/globals.css (`@theme`). */
+const C = {
+  void: "#15120d",
+  voidSoft: "#1e1a14",
+  cream: "#f3eee3",
+  creamSoft: "#e9e2d2",
+  mint: "#4fe3a1",
+  green: "#0a6b45",
+};
+
+/* ------------------------------------------------------- seeded randomness */
 
 function fnv1a(str) {
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < str.length; i++) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i += 1) {
     h ^= str.charCodeAt(i);
-    h = Math.imul(h, 16777619) >>> 0;
+    h = Math.imul(h, 0x01000193);
   }
   return h >>> 0;
 }
@@ -75,229 +69,174 @@ function mulberry32(seed) {
   };
 }
 
-const between = (rand, lo, hi) => lo + rand() * (hi - lo);
+const f = (n) => Math.round(n * 100) / 100;
 
-/** Two-decimal coordinate rounding keeps path strings byte-stable. */
-const f = (n) => String(Math.round(n * 100) / 100);
-
-/* --------------------------------------------------------------- motifs -- */
-
-/**
- * One closed contour of a pseudo-terrain: a circle displaced by a sum of
- * integer-frequency sine harmonics. All rings of a poster share the same
- * harmonic field (with a per-ring phase drift) so they nest like the contour
- * lines of a single landform.
- */
-function contourPath(cx, cy, radius, harmonics, drift, amp, squash) {
-  const steps = 240;
+/** A ridge line: three sine harmonics over the width. */
+function ridgePath(rand, width, baseY, amp) {
+  const ph = [rand() * 6.2832, rand() * 6.2832, rand() * 6.2832];
+  const fr = [0.5 + rand() * 0.6, 1.2 + rand() * 1.1, 2.4 + rand() * 1.6];
   let d = "";
-  for (let s = 0; s < steps; s++) {
-    const t = (s / steps) * Math.PI * 2;
-    let disp = 0;
-    for (const h of harmonics) {
-      disp += h.amp * Math.sin(h.freq * t + h.phase + drift);
-    }
-    const r = radius * (1 + amp * disp);
-    const x = cx + Math.cos(t) * r;
-    const y = cy + Math.sin(t) * r * squash;
-    d += `${s ? "L" : "M"}${f(x)} ${f(y)}`;
+  for (let i = 0; i <= 96; i += 1) {
+    const x = (i / 96) * width;
+    const t = (i / 96) * 6.2832;
+    const y =
+      baseY +
+      amp *
+        (Math.sin(t * fr[0] + ph[0]) * 0.55 +
+          Math.sin(t * fr[1] + ph[1]) * 0.3 +
+          Math.sin(t * fr[2] + ph[2]) * 0.15);
+    d += `${i ? "L" : "M"}${f(x)} ${f(y)}`;
+  }
+  return d;
+}
+
+/** A displaced closed ring: harmonic wobble around an ellipse. */
+function ringPath(rand, cx, cy, r, k) {
+  const ph = [rand() * 6.2832, rand() * 6.2832];
+  const fr = [2 + Math.floor(rand() * 3), 5 + Math.floor(rand() * 4)];
+  let d = "";
+  for (let s = 0; s <= 120; s += 1) {
+    const a = (s / 120) * 6.2832;
+    const wob =
+      1 +
+      0.07 * Math.sin(a * fr[0] + ph[0] + k * 0.06) +
+      0.04 * Math.sin(a * fr[1] + ph[1]);
+    d += `${s ? "L" : "M"}${f(cx + Math.cos(a) * r * wob * 1.15)} ${f(
+      cy + Math.sin(a) * r * wob * 0.8,
+    )}`;
   }
   return `${d}Z`;
 }
 
-/** Hairline scan grid with a faint major/minor cadence. */
-function scanGrid(rand) {
-  const step = 50;
-  const gx = Math.floor(rand() * step);
-  const gy = Math.floor(rand() * step);
-  let out = "";
-  for (let x = gx; x <= WIDTH; x += step) {
-    const major = Math.round(x / step) % 4 === 0;
-    out += `<line x1="${f(x)}" y1="0" x2="${f(x)}" y2="${HEIGHT}" stroke="${
-      major ? C.lineHi : C.line
-    }" stroke-opacity="${major ? 0.8 : 0.55}" stroke-width="1"/>`;
+/* ------------------------------------------------------------- compositions */
+
+/** Landscape — layered ridges under a low disc: quiet, cinematic. */
+function buildLandscape(rand, W, H, accent) {
+  const glowX = W * (0.25 + rand() * 0.5);
+  const glowY = H * (0.26 + rand() * 0.16);
+  const disc = Math.min(W, H) * (0.14 + rand() * 0.1);
+
+  let out = `<rect width="${W}" height="${H}" fill="${C.voidSoft}"/>`;
+  out += `<circle cx="${f(glowX)}" cy="${f(glowY)}" r="${f(
+    Math.min(W, H) * 0.55,
+  )}" fill="url(#glow)"/>`;
+  out += `<circle cx="${f(glowX)}" cy="${f(glowY)}" r="${f(
+    disc,
+  )}" fill="${C.cream}" fill-opacity="0.05"/>`;
+
+  // sparse sky dust
+  for (let i = 0; i < 26; i += 1) {
+    out += `<circle cx="${f(rand() * W)}" cy="${f(
+      rand() * H * 0.5,
+    )}" r="${f(0.8 + rand() * 1.4)}" fill="${C.cream}" fill-opacity="${f(
+      0.1 + rand() * 0.25,
+    )}"/>`;
   }
-  for (let y = gy; y <= HEIGHT; y += step) {
-    const major = Math.round(y / step) % 4 === 0;
-    out += `<line x1="0" y1="${f(y)}" x2="${WIDTH}" y2="${f(y)}" stroke="${
-      major ? C.lineHi : C.line
-    }" stroke-opacity="${major ? 0.8 : 0.55}" stroke-width="1"/>`;
+
+  // ridges back to front
+  const layers = 5;
+  for (let i = 0; i < layers; i += 1) {
+    const t = i / (layers - 1);
+    const d = ridgePath(rand, W, H * (0.52 + t * 0.34), H * (0.05 + (1 - t) * 0.05));
+    const last = i === layers - 1;
+    out += `<path d="${d}L${W} ${H}L0 ${H}Z" fill="${
+      last ? C.void : C.voidSoft
+    }"/>`;
+    out += `<path d="${d}" fill="none" stroke="${
+      last ? accent : C.creamSoft
+    }" stroke-opacity="${last ? 0.85 : f(0.07 + (1 - t) * 0.07)}" stroke-width="${
+      last ? 2.4 : 1.4
+    }"/>`;
   }
   return out;
 }
 
-/**
- * Telemetry tick rail: a hairline baseline carrying minor ticks, graduated
- * majors, and occasional seeded signal pips. `dir` "h" runs along x at y=pos,
- * `dir` "v" runs along y at x=pos; `flip` grows ticks inward/upward.
- */
-function tickRail({ dir, pos, from, to, flip, accent, accent2, rand }) {
-  const step = 16;
-  const flipSign = flip ? -1 : 1;
-  const rail =
-    dir === "h"
-      ? `M${f(from)} ${f(pos)}H${f(to)}`
-      : `M${f(pos)} ${f(from)}V${f(to)}`;
-  let out = `<path d="${rail}" stroke="${C.lineHi}" stroke-opacity="0.9" stroke-width="1"/>`;
-  let k = 0;
-  for (let p = from; p <= to; p += step, k++) {
-    const major = k % 10 === 0;
-    const mid = k % 5 === 0;
-    const len = (major ? 22 : mid ? 12 : 6) * flipSign;
-    const color = major ? accent : mid ? accent2 : C.lineHi;
-    const op = major ? 0.9 : mid ? 0.6 : 0.75;
-    const seg =
-      dir === "h"
-        ? `M${f(p)} ${f(pos)}V${f(pos + len)}`
-        : `M${f(pos)} ${f(p)}H${f(pos + len)}`;
-    out += `<path d="${seg}" stroke="${color}" stroke-opacity="${f(op)}" stroke-width="${major ? 2 : 1}"/>`;
-    if (major && rand() < 0.3) {
-      const px = dir === "h" ? p : pos + len * 1.7;
-      const py = dir === "h" ? pos + len * 1.7 : p;
-      out += `<circle cx="${f(px)}" cy="${f(py)}" r="2.5" fill="${accent}" fill-opacity="0.8"/>`;
+/** Macro — large displaced contour rings: a texture close-up. */
+function buildMacro(rand, W, H, accent) {
+  const cx = W * (0.32 + rand() * 0.36);
+  const cy = H * (0.3 + rand() * 0.4);
+  let out = `<rect width="${W}" height="${H}" fill="${C.void}"/>`;
+  const rings = 24 + Math.floor(rand() * 10);
+  const gap = Math.min(W, H) * 0.034;
+  for (let k = 0; k < rings; k += 1) {
+    const major = k % 5 === 0;
+    out += `<path d="${ringPath(
+      rand,
+      cx,
+      cy,
+      26 + k * gap,
+      k,
+    )}" fill="none" stroke="${k % 3 === 0 ? accent : C.creamSoft}" stroke-opacity="${
+      major ? 0.5 : f(0.12 + (k % 3) * 0.05)
+    }" stroke-width="${major ? 1.8 : 1}"/>`;
+  }
+  out += `<circle cx="${f(cx)}" cy="${f(cy)}" r="4" fill="${accent}" fill-opacity="0.8"/>`;
+  return out;
+}
+
+/** Field — a quiet point network over a hairline grid. */
+function buildField(rand, W, H, accent) {
+  let out = `<rect width="${W}" height="${H}" fill="${C.voidSoft}"/>`;
+  for (let x = 100; x < W; x += 100) {
+    out += `<path d="M${x} 0V${H}" stroke="${C.creamSoft}" stroke-opacity="0.04"/>`;
+  }
+  for (let y = 100; y < H; y += 100) {
+    out += `<path d="M0 ${y}H${W}" stroke="${C.creamSoft}" stroke-opacity="0.04"/>`;
+  }
+
+  // one wave crossing the field
+  out += `<path d="${ridgePath(rand, W, H * (0.3 + rand() * 0.4), H * 0.04)}" fill="none" stroke="${accent}" stroke-opacity="0.25" stroke-width="1.4"/>`;
+
+  const n = 80 + Math.floor(rand() * 30);
+  const pts = [];
+  for (let i = 0; i < n; i += 1) {
+    pts.push([rand() * W, rand() * H]);
+  }
+  // edges between near neighbours
+  for (let i = 0; i < n; i += 1) {
+    for (let j = i + 1; j < n; j += 1) {
+      const dx = pts[i][0] - pts[j][0];
+      const dy = pts[i][1] - pts[j][1];
+      const dist = Math.hypot(dx, dy);
+      if (dist < 150) {
+        out += `<path d="M${f(pts[i][0])} ${f(pts[i][1])}L${f(pts[j][0])} ${f(
+          pts[j][1],
+        )}" stroke="${C.mint}" stroke-opacity="0.1"/>`;
+      }
+    }
+  }
+  for (let i = 0; i < n; i += 1) {
+    const [x, y] = pts[i];
+    const lit = rand() < 0.12;
+    out += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(
+      lit ? 3 : 1.2 + rand() * 1.6,
+    )}" fill="${lit ? accent : C.cream}" fill-opacity="${lit ? 0.9 : 0.35}"/>`;
+    if (lit) {
+      out += `<circle cx="${f(x)}" cy="${f(y)}" r="9" fill="none" stroke="${accent}" stroke-opacity="0.35"/>`;
     }
   }
   return out;
 }
 
-/** Sparse particles — dust on the scope, a few as crosshair motes or halos. */
-function particles(rand, accent, accent2) {
-  const n = 24 + Math.floor(rand() * 10);
-  let out = "";
-  for (let k = 0; k < n; k++) {
-    const x = between(rand, 24, WIDTH - 24);
-    const y = between(rand, 24, HEIGHT - 24);
-    const r = between(rand, 1.2, 3.2);
-    const pick = rand();
-    const color = pick < 0.55 ? C.terrain : pick < 0.8 ? accent : accent2;
-    const op = between(rand, 0.3, 0.75);
-    const shape = rand();
-    if (shape < 0.18) {
-      out += `<path d="M${f(x - 6)} ${f(y)}H${f(x + 6)}M${f(x)} ${f(y - 6)}V${f(y + 6)}" stroke="${color}" stroke-opacity="${f(op)}" stroke-width="1"/>`;
-    } else if (shape < 0.32) {
-      out +=
-        `<circle cx="${f(x)}" cy="${f(y)}" r="${f(r * 3)}" fill="${color}" fill-opacity="${f(op * 0.15)}"/>` +
-        `<circle cx="${f(x)}" cy="${f(y)}" r="${f(r)}" fill="${color}" fill-opacity="${f(op)}"/>`;
-    } else {
-      out += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(r)}" fill="${color}" fill-opacity="${f(op)}"/>`;
-    }
-  }
-  return out;
-}
+function buildSvg(id, kind) {
+  const rand = mulberry32(fnv1a(`${id}-${kind}`));
+  const { width: W, height: H } = KIND_SIZE[kind];
+  const accent = rand() < 0.65 ? C.mint : C.cream;
+  const body =
+    kind === "landscape"
+      ? buildLandscape(rand, W, H, accent)
+      : kind === "macro"
+        ? buildMacro(rand, W, H, accent)
+        : buildField(rand, W, H, accent);
 
-/** Engineering-drawing corner ticks; the first answers to the accent. */
-function cornerTicks(accent) {
-  const arm = 44;
-  const inset = 40;
-  const corners = [
-    { x: inset, y: inset, sx: 1, sy: 1 },
-    { x: WIDTH - inset, y: inset, sx: -1, sy: 1 },
-    { x: inset, y: HEIGHT - inset, sx: 1, sy: -1 },
-    { x: WIDTH - inset, y: HEIGHT - inset, sx: -1, sy: -1 },
-  ];
-  return corners
-    .map((c, k) => {
-      const d = `M${f(c.x + c.sx * arm)} ${f(c.y)}H${f(c.x)}V${f(c.y + c.sy * arm)}`;
-      return `<path d="${d}" fill="none" stroke="${
-        k === 0 ? accent : C.lineHi
-      }" stroke-opacity="${k === 0 ? 0.9 : 0.8}" stroke-width="2"/>`;
-    })
-    .join("");
-}
-
-/* ---------------------------------------------------------------- poster -- */
-
-function buildSvg(id) {
-  const index = IDS.indexOf(id);
-  const rand = mulberry32(fnv1a(id));
-  const accent = ACCENTS[index % 3];
-  const accent2 = ACCENTS[(index + 1) % 3];
-
-  // Ring field: same center and harmonic terrain for every ring of one poster.
-  const cx = between(rand, 520 + index * 80, 760 + index * 80);
-  const cy = between(rand, 400, 620);
-  const squash = between(rand, 0.82, 0.94);
-  const harmonics = [1, 2, 3, 4].map((k) => ({
-    freq: 2 + Math.floor(rand() * 7),
-    amp: 0.11 / k,
-    phase: between(rand, 0, Math.PI * 2),
-  }));
-  const ringCount = 9 + Math.floor(rand() * 4);
-  const r0 = between(rand, 50, 78);
-  const gap = between(rand, 30, 46);
-
-  let rings = "";
-  for (let j = 0; j < ringCount; j++) {
-    const radius = r0 + j * gap;
-    const amp = 0.05 + j * 0.012;
-    const d = contourPath(cx, cy, radius, harmonics, j * 0.19, amp, squash);
-    const majorRing = j % 5 === 0;
-    const midRing = j % 5 === 2;
-    const color = majorRing ? accent : midRing ? accent2 : C.terrain;
-    const op = majorRing ? 0.6 : midRing ? 0.35 : 0.28 + j * 0.01;
-    if (majorRing) {
-      // Soft halo under the accented contours (blur-free glow: fat + faint).
-      rings += `<path d="${d}" fill="none" stroke="${color}" stroke-opacity="0.07" stroke-width="9"/>`;
-    }
-    rings += `<path d="${d}" fill="none" stroke="${color}" stroke-opacity="${f(op)}" stroke-width="${majorRing ? 2 : 1.25}"/>`;
-  }
-
-  // Center marker on the ring field.
-  const marker =
-    `<path d="M${f(cx - 18)} ${f(cy)}H${f(cx + 18)}M${f(cx)} ${f(cy - 18)}V${f(cy + 18)}" stroke="${accent2}" stroke-opacity="0.55" stroke-width="1"/>` +
-    `<circle cx="${f(cx)}" cy="${f(cy)}" r="6" fill="none" stroke="${accent2}" stroke-opacity="0.5" stroke-width="1"/>`;
-
-  const rails =
-    tickRail({
-      dir: "h",
-      pos: 64,
-      from: 96,
-      to: WIDTH - 96,
-      flip: true,
-      accent,
-      accent2,
-      rand,
-    }) +
-    tickRail({
-      dir: "h",
-      pos: HEIGHT - 64,
-      from: 96,
-      to: WIDTH - 96,
-      flip: false,
-      accent: accent2,
-      accent2: accent,
-      rand,
-    }) +
-    tickRail({
-      dir: "v",
-      pos: WIDTH - 64,
-      from: 160,
-      to: HEIGHT - 160,
-      flip: true,
-      accent,
-      accent2,
-      rand,
-    });
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs>
-<radialGradient id="bg" cx="${f(cx / WIDTH)}" cy="${f(cy / HEIGHT)}" r="0.8">
-<stop offset="0" stop-color="${C.panel}"/>
-<stop offset="1" stop-color="${C.void}"/>
-</radialGradient>
-<radialGradient id="glow" cx="${f(cx / WIDTH)}" cy="${f(cy / HEIGHT)}" r="0.5">
-<stop offset="0" stop-color="${accent}" stop-opacity="0.1"/>
-<stop offset="1" stop-color="${accent}" stop-opacity="0"/>
+<radialGradient id="glow">
+<stop offset="0" stop-color="${C.mint}" stop-opacity="0.08"/>
+<stop offset="1" stop-color="${C.mint}" stop-opacity="0"/>
 </radialGradient>
 </defs>
-<rect width="${WIDTH}" height="${HEIGHT}" fill="url(#bg)"/>
-${scanGrid(rand)}
-<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(between(rand, 440, 560))}" fill="url(#glow)"/>
-${rings}
-${marker}
-${rails}
-${particles(rand, accent, accent2)}
-${cornerTicks(accent)}
+${body}
 </svg>`;
 }
 
@@ -305,12 +244,15 @@ ${cornerTicks(accent)}
 
 mkdirSync(OUT_DIR, { recursive: true });
 for (const id of IDS) {
-  const resvg = new Resvg(buildSvg(id), {
-    font: { loadSystemFonts: false },
-  });
-  const png = resvg.render().asPng();
-  writeFileSync(join(OUT_DIR, `${id}.png`), png);
-  console.log(`renders/${id}.png  ${png.length} bytes`);
+  rmSync(join(OUT_DIR, `${id}.png`), { force: true }); // superseded single poster
+  for (const kind of Object.keys(KIND_SIZE)) {
+    const resvg = new Resvg(buildSvg(id, kind), {
+      font: { loadSystemFonts: false },
+    });
+    const png = resvg.render().asPng();
+    writeFileSync(join(OUT_DIR, `${id}-${kind}.png`), png);
+    console.log(`renders/${id}-${kind}.png  ${png.length} bytes`);
+  }
 }
 
 /* ---------------------------------------------------------------- favicon -- */

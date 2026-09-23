@@ -1,21 +1,22 @@
 # jamesmaradiaga.dev
 
 Personal engineering portfolio — Lead DevOps Engineer, cloud infrastructure, SRE, MLOps.
-Designed as an Apple-style product-launch story: huge type, alternating
-white/black stages, big case-study shots, restrained motion.
+Shaped as a media-dominant **work spine** (home) plus one quiet **Info page** —
+the binding design language lives in [CONTEXT.md](CONTEXT.md); structural
+decisions in [docs/adr](docs/adr).
 
 ## Stack
 
 - **Next.js 16** (App Router, React 19, Turbopack)
 - **TypeScript**, strict
 - **Tailwind CSS v4** — design tokens and tone system in `src/app/globals.css`
-- **System font stack** (`-apple-system`, SF Pro) — true Apple type on Apple
-  devices, zero webfont cost and zero layout shift everywhere else
-- **motion** — the settle-on-scroll product-shot effect (`useScroll` +
-  `useTransform`), static under `prefers-reduced-motion`
-- **@resvg/resvg-js** — `scripts/generate-renders.mjs` builds one deterministic,
-  text-free poster per case study (`public/renders/<id>.png`, 1600×1000) and
-  the favicon; run by `prebuild`
+- **Type** — Instrument Serif (display, light), Instrument Sans (body),
+  JetBrains Mono (8px micro-labels)
+- **motion** — settle-on-scroll render panels and word-stagger headlines,
+  static under `prefers-reduced-motion`
+- **@resvg/resvg-js** — `scripts/generate-renders.mjs` generates 3 seeded,
+  text-free render panels per case study (`landscape/macro/field`) plus the
+  favicon; run by `prebuild`
 - **lucide-react** icons; brand glyphs in `src/components/brand-icons.tsx`
 
 ## Commands
@@ -34,24 +35,20 @@ npx tsc --noEmit # typecheck
 ```
 src/
   app/
-    layout.tsx          # system-font shell, metadata, dark-bar page
-    page.tsx            # story-beat composition (server component)
+    layout.tsx          # serif/sans/mono shell, metadata
+    page.tsx            # home = name header + work spine
+    info/page.tsx       # about, experience, skills, thinking, github, contact
     opengraph-image.tsx # generated OG card
     robots.ts, sitemap.ts, icon.svg
   components/
     i18n.tsx            # EN/ES store (useSyncExternalStore) + localStorage
-    ui.tsx              # Section, Kicker, Headline, Lead, TextLink, Pill,
-                        # Tag, SpecRow, Stat, Reveal
-    nav.tsx             # 44px frosted bar, tone-aware (dark/light glass)
-    hero.tsx            # launch stage: name, headline, links, product shot
-    about.tsx           # prose + principles feature grid + now list
-    experience.tsx      # career as a tech-spec sheet
-    projects.tsx        # case studies as alternating story + poster rows
-    skills.tsx          # spec groups: skill name + how it is used
-    thinking.tsx        # principles as statement cards
-    github-section.tsx  # stats, contribution grid, repo cards
-    contact.tsx         # closing CTA + interests
-    footer.tsx          # fat footer incl. the "For agents" block
+    ui.tsx              # Section, Kicker, Headline, Words, Lead, TextLink,
+                        # Pill, Tag, SpecRow, Stat, Reveal
+    work-spine.tsx      # case-study chapters: anchor, proof column, panels
+    hero.tsx            # the name header
+    nav.tsx             # minimal tone-aware bar (name, Info, EN/ES, contact)
+    about.tsx, experience.tsx, skills.tsx, thinking.tsx,
+    github-section.tsx, contact.tsx, footer.tsx
     reveal.tsx          # scroll entrance primitive (AR-READ-01 gated)
     providers.tsx, brand-icons.tsx
   content/
@@ -63,22 +60,22 @@ src/
     github.ts   # build-time GitHub API fetch with static fallback
     agent-docs.ts, structured-data.ts, utils.ts
 scripts/
-  generate-renders.mjs  # seeded poster + favicon generator (prebuild)
+  generate-renders.mjs  # seeded render panels + favicon (prebuild)
   agent-check.py        # AgentReady conformance check
 ```
 
-## Design system
+## Design
 
-Every section is a `Section` with one of three tones (`tone-light` white,
-`tone-gray` #f5f5f7, `tone-dark` black) — the tone sets `--text`, `--text-soft`,
-`--link` and `--hairline`, so beats alternate like apple.com's long pages. The
-global bar reads the tone of the section under it and switches between dark and
-light frosted glass. Link blue is #0071e3 (light) / #2997ff (dark). Type is
-Apple's scale: tiny colored kicker, huge tight headline (`display-hero`), 21px
-soft lead, 17px body, 12px footer.
+The binding glossary is [CONTEXT.md](CONTEXT.md) — "work spine", "anchor",
+"proof column", "render panel", "detail strip", "Type", "James's colors",
+"Apple transitions". When a design call is ambiguous, the glossary wins; the
+visual benchmark is recorded there too. Structure decisions live in
+[docs/adr](docs/adr) (0001: home is a work spine only).
 
-Imagery is the case-study posters (seeded, text-free, generated at build) treated
-as product shots — rounded, shadowed, settling from 1.04× to 1× on scroll.
+Home carries no sections beyond the work; `/info` holds about, experience,
+skills, thinking, GitHub and contact. Machine-readable artifacts are generated
+from the same content modules (`/index.md`, `/llms.txt`) and advertise the real
+routes.
 
 ## Content rules
 

@@ -41,9 +41,9 @@ export function Experience() {
   const kicker = d.experience.eyebrow.split(" — ")[1] ?? d.experience.eyebrow;
 
   return (
-    <Section id="experience" tone="dark">
+    <Section id="experience" tone="light">
       <Reveal>
-        <Kicker>{kicker}</Kicker>
+        <Kicker className="text-soft">{kicker}</Kicker>
       </Reveal>
       <Reveal delay={70}>
         <Headline>{d.experience.title}</Headline>

@@ -1,24 +1,25 @@
 "use client";
 
+import Link from "next/link";
 import { useI18n } from "./i18n";
-import { sections, site } from "@/content/site";
+import { site, sections } from "@/content/site";
+import { cx } from "@/lib/utils";
 
+/**
+ * The end of the scroll — the reference's tiny link stack, plus the
+ * load-bearing "For agents" block (AgentReady AR-READ-06).
+ */
 export function Footer() {
   const { d } = useI18n();
-
-  const explore = sections.map((section) => ({
-    href: `#${section.id}`,
-    label: d.nav.sections[section.id],
-  }));
+  const year = "2026";
 
   const elsewhere = [
-    { href: site.links.blog, label: d.github.blog, external: true },
+    { href: site.links.email, label: d.contact.email, external: false },
     { href: site.links.github, label: d.contact.github, external: true },
     { href: site.links.linkedin, label: d.contact.linkedin, external: true },
-    { href: site.links.email, label: d.contact.email, external: false },
+    { href: site.links.blog, label: d.github.blog, external: true },
   ];
 
-  /* Load-bearing agent index (AgentReady AR-READ-06) — these must stay linked. */
   const agentFiles = [
     { href: "/llms.txt", label: "/llms.txt", note: d.footer.forAgentsIndex },
     { href: "/index.md", label: "/index.md", note: d.footer.forAgentsMarkdown },
@@ -26,70 +27,75 @@ export function Footer() {
   ];
 
   return (
-    <footer className="tone-gray border-t hairline">
-      <div className="mx-auto w-full max-w-[980px] px-6 py-12 text-[12px] leading-relaxed text-soft sm:px-8">
-        <div className="grid gap-10 sm:grid-cols-3">
-          {/* page sections */}
-          <nav aria-label={d.nav.menu}>
-            <p className="font-semibold text-main">{d.nav.menu}</p>
-            <ul className="mt-3 space-y-2">
-              {explore.map((item) => (
-                <li key={item.href}>
-                  <a href={item.href} className="transition-colors hover:text-main">
-                    {item.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-
-          {/* elsewhere */}
-          <nav aria-label={d.nav.sections.contact}>
-            <p className="font-semibold text-main">{d.nav.sections.contact}</p>
-            <ul className="mt-3 space-y-2">
-              {elsewhere.map((item) => (
-                <li key={item.href}>
-                  <a
-                    href={item.href}
-                    target={item.external ? "_blank" : undefined}
-                    rel={item.external ? "noreferrer noopener" : undefined}
-                    className="transition-colors hover:text-main"
+    <footer className="tone-dark border-t hairline px-7 py-14">
+      <div className="mx-auto grid max-w-[1400px] gap-10 text-[12px] sm:grid-cols-3">
+        <nav aria-label={d.nav.menu}>
+          <p className="kicker text-soft">{d.nav.menu}</p>
+          <ul className="mt-4 space-y-2">
+            {sections
+              .filter((s) => s.id !== "home")
+              .map((s) => (
+                <li key={s.id}>
+                  <Link
+                    href={`/info#${s.id}`}
+                    className="text-soft transition-colors hover:text-main"
                   >
-                    {item.label}
-                    {item.external ? <span className="sr-only"> {d.a11y.external}</span> : null}
-                  </a>
+                    {d.nav.sections[s.id]}
+                  </Link>
                 </li>
               ))}
-            </ul>
-          </nav>
+          </ul>
+        </nav>
 
-          {/* load-bearing agent index (AR-READ-06) — these must stay linked */}
-          <nav aria-label={d.footer.forAgents}>
-            <p className="font-semibold text-main">{d.footer.forAgents}</p>
-            <ul className="mt-3 space-y-2">
-              {agentFiles.map((file) => (
-                <li key={file.href}>
-                  <a href={file.href} className="transition-colors hover:text-main">
-                    {file.label}
-                    <span aria-hidden> · {file.note}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        </div>
+        <nav aria-label={d.nav.sections.contact}>
+          <p className="kicker text-soft">{d.nav.sections.contact}</p>
+          <ul className="mt-4 space-y-2">
+            {elsewhere.map((item) => (
+              <li key={item.href}>
+                <a
+                  href={item.href}
+                  target={item.external ? "_blank" : undefined}
+                  rel={item.external ? "noreferrer noopener" : undefined}
+                  className="text-soft transition-colors hover:text-main"
+                >
+                  {item.label}
+                  {item.external ? (
+                    <span className="sr-only"> {d.a11y.external}</span>
+                  ) : null}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-        {/* legal line */}
-        <div className="mt-10 flex flex-wrap items-center gap-x-2 gap-y-1 border-t hairline pt-5">
-          <p>{d.footer.built}</p>
-          <span aria-hidden>·</span>
-          <p>{d.footer.stack}</p>
-          <span aria-hidden>·</span>
-          <p>{d.footer.rights}</p>
-          <span aria-hidden>·</span>
-          <p>{d.footer.version}</p>
-        </div>
+        <nav aria-label={d.footer.forAgents}>
+          <p className="kicker text-soft">{d.footer.forAgents}</p>
+          <ul className="mt-4 space-y-2">
+            {agentFiles.map((f) => (
+              <li key={f.href}>
+                <a
+                  href={f.href}
+                  className="text-soft transition-colors hover:text-main"
+                >
+                  {f.label}
+                </a>
+                <span className="ml-2 text-soft opacity-70">{f.note}</span>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </div>
+
+      <p className="mx-auto mt-12 flex max-w-[1400px] flex-wrap gap-x-4 gap-y-1 text-[11px] text-soft">
+        <span>
+          {d.footer.built} · {year}
+        </span>
+        <span>{d.footer.stack}</span>
+        <span>{d.footer.rights}</span>
+        <span className={cx("ml-auto font-mono")}>
+          {d.footer.version} 2026.09
+        </span>
+      </p>
     </footer>
   );
 }

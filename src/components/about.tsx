@@ -22,7 +22,7 @@ export function About() {
   return (
     <Section id="about" tone="light">
       <Reveal>
-        <Kicker>{kicker}</Kicker>
+        <Kicker className="text-soft">{kicker}</Kicker>
       </Reveal>
       <Reveal delay={70}>
         <Headline>{d.about.title}</Headline>
@@ -54,7 +54,7 @@ export function About() {
       {/* ---------- engineering philosophy ---------- */}
       <div className="mt-28">
         <Reveal>
-          <Kicker>{d.about.philosophyTitle}</Kicker>
+          <Kicker className="text-soft">{d.about.philosophyTitle}</Kicker>
         </Reveal>
         <ul className="mt-10 grid gap-12 sm:grid-cols-2 lg:grid-cols-3">
           {principles.map((principle, i) => (
@@ -73,7 +73,7 @@ export function About() {
       {/* ---------- right now ---------- */}
       <div className="mt-28">
         <Reveal>
-          <Kicker>{d.about.nowTitle}</Kicker>
+          <Kicker className="text-soft">{d.about.nowTitle}</Kicker>
         </Reveal>
         <ul className="mt-8 grid gap-x-16 gap-y-4 sm:grid-cols-2">
           {d.about.now.map((item, i) => (

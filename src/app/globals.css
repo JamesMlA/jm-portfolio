@@ -18,7 +18,7 @@
   --color-green-ink: #0a6b45;
   --color-green-deep: #0d2e22;
 
-  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-serif), Georgia, "Times New Roman", serif;
   --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, monospace;
 
@@ -93,10 +93,9 @@
   h3,
   h4 {
     font-family: var(--font-display);
-    font-weight: 600;
-    font-variation-settings: "opsz" 48, "wdth" 108;
-    letter-spacing: -0.03em;
-    line-height: 1.04;
+    font-weight: 400;
+    letter-spacing: -0.012em;
+    line-height: 1.05;
     text-wrap: balance;
   }
 
@@ -141,9 +140,9 @@
 /* The signature label — JetBrains Mono, tracked, in green. */
 @utility kicker {
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
+  font-size: 0.5rem;
   font-weight: 500;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   line-height: 1.5;
 }
@@ -151,10 +150,9 @@
 /* Oversized personal headline — Bricolage, slightly wide, very tight. */
 @utility display-hero {
   font-family: var(--font-display);
-  font-weight: 700;
-  font-variation-settings: "opsz" 48, "wdth" 112;
-  letter-spacing: -0.035em;
-  line-height: 1.02;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.03;
 }
 
 /* Filled action pill — springs on press. */
