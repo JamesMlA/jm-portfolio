@@ -1,17 +1,18 @@
 #!/usr/bin/env node
 /**
- * Deterministic, text-free media for the site (CONTEXT.md "Render panel"):
+ * Deterministic media for the site (CONTEXT.md "Render panel"):
  *  - three render panels per case study — landscape (2400x1200), macro and
- *    field (both 1600x1000)
- *  - a looping hero film (hero.mp4) + its poster, built frame by frame from the
- *    same seeded compositions and encoded with ffmpeg
- *  - custom cursor images (plain + link)
- *  - favicon.ico
+ *    field (both 1600x1000). Each project gets its OWN trio of motifs drawn
+ *    from a pool of nine, so the fifteen plates never repeat themselves.
+ *  - every panel carries baked annotation (title card on the landscape, a
+ *    plate stamp on macro/field) — typed in the site's own faces, vendored in
+ *    assets/fonts and passed to resvg explicitly (no system fonts, so the
+ *    pipeline stays deterministic and offline).
+ *  - a looping hero film (hero.mp4) + poster, custom cursors, favicon.
  *
- * Every random draw comes from a mulberry32 PRNG seeded with an FNV-1a hash, so
- * panels are byte-identical across runs (the mp4 is stabilised with bitexact
- * flags). Rasterization uses @resvg/resvg-js with system fonts disabled — no
- * text can ever appear. Deliberately no full-canvas noise: it wrecks PNG size.
+ * All randomness comes from a mulberry32 PRNG seeded with an FNV-1a hash of
+ * "<id>-<kind>"; coordinates and text are the only inputs, so re-running is
+ * byte-identical (the mp4 is stabilised with bitexact flags).
  *
  * Usage: npm run renders
  */
@@ -22,26 +23,42 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Resvg } from "@resvg/resvg-js";
 
-const OUT_DIR = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "public",
-  "renders",
-);
-const PUBLIC_DIR = join(OUT_DIR, "..");
-
-const IDS = [
-  "cloud-infrastructure",
-  "kubernetes-platform",
-  "cicd-automation",
-  "streaming-infrastructure",
-  "mlops",
+const HERE = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(HERE, "..");
+const OUT_DIR = join(ROOT, "public", "renders");
+const PUBLIC_DIR = join(ROOT, "public");
+const FONT_FILES = [
+  join(ROOT, "assets", "fonts", "InstrumentSerif-Regular.ttf"),
+  join(ROOT, "assets", "fonts", "JetBrainsMono-Medium.ttf"),
 ];
+const SERIF = "Instrument Serif";
+const MONO = "JetBrains Mono";
 
 const KIND_SIZE = {
   landscape: { width: 2400, height: 1200 },
   macro: { width: 1600, height: 1000 },
   field: { width: 1600, height: 1000 },
+};
+
+/**
+ * Copy mirrors src/content/data.ts (English). Domains are language-neutral on
+ * the site; titles use the default language.
+ */
+const CATALOG = [
+  { id: "cloud-infrastructure", index: "01", title: "Cloud infrastructure", domain: "AWS · Azure · GCP", accent: "mint" },
+  { id: "kubernetes-platform", index: "02", title: "Kubernetes platform", domain: "Platform · SRE", accent: "cream" },
+  { id: "cicd-automation", index: "03", title: "CI/CD & automation", domain: "Delivery · Tooling", accent: "green" },
+  { id: "streaming-infrastructure", index: "04", title: "Streaming infrastructure", domain: "Media · Linux", accent: "mint" },
+  { id: "mlops", index: "05", title: "AI / MLOps", domain: "Infrastructure for machine learning", accent: "cream" },
+];
+
+/** Every project gets its own trio — fifteen plates, nine motifs, few repeats. */
+const ROLES = {
+  "cloud-infrastructure": { landscape: "ridges", macro: "terraces", field: "network" },
+  "kubernetes-platform": { landscape: "bands", macro: "moire", field: "constellation" },
+  "cicd-automation": { landscape: "terraces", macro: "spokes", field: "network" },
+  "streaming-infrastructure": { landscape: "dunes", macro: "rings", field: "constellation" },
+  mlops: { landscape: "spokes", macro: "bands", field: "rings" },
 };
 
 const HERO = { width: 1600, height: 900, fps: 20, seconds: 12 };
@@ -79,8 +96,11 @@ function mulberry32(seed) {
 
 const f = (n) => Math.round(n * 100) / 100;
 const TAU = 6.2832;
+/** Text goes into XML — ampersands and angle brackets must be escaped. */
+const esc = (s) =>
+  String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-/** A ridge line: three sine harmonics, optionally drifted sideways. */
+/** Three sine harmonics across the width — the shared ridge primitive. */
 function ridgePath(rand, width, baseY, amp, drift = 0, overshoot = 0) {
   const ph = [rand() * TAU, rand() * TAU, rand() * TAU];
   const fr = [0.5 + rand() * 0.6, 1.2 + rand() * 1.1, 2.4 + rand() * 1.6];
@@ -99,7 +119,19 @@ function ridgePath(rand, width, baseY, amp, drift = 0, overshoot = 0) {
   return d;
 }
 
-/** A displaced closed ring: harmonic wobble around an ellipse. */
+function wobbleLine(rand, W, H, baseY, amp, segments = 96) {
+  const ph = [rand() * TAU, rand() * TAU];
+  const fr = [1 + rand() * 1.2, 2.5 + rand() * 2];
+  let d = "";
+  for (let i = 0; i <= segments; i += 1) {
+    const x = (i / segments) * W;
+    const t = (i / segments) * TAU;
+    const y = baseY + amp * (Math.sin(t * fr[0] + ph[0]) * 0.7 + Math.sin(t * fr[1] + ph[1]) * 0.3);
+    d += `${i ? "L" : "M"}${f(x)} ${f(y)}`;
+  }
+  return d;
+}
+
 function ringPath(rand, cx, cy, r, k) {
   const ph = [rand() * TAU, rand() * TAU];
   const fr = [2 + Math.floor(rand() * 3), 5 + Math.floor(rand() * 4)];
@@ -117,87 +149,182 @@ function ringPath(rand, cx, cy, r, k) {
   return `${d}Z`;
 }
 
-/* ------------------------------------------------------------- compositions */
+/* ---------------------------------------------------------------- motifs -- */
 
-/** Landscape — layered ridges under a low disc: quiet, cinematic. */
-function buildLandscape(rand, W, H, accent) {
+/** Layered harmonic ridges under a low disc. */
+function ridges(rand, W, H, accent) {
   const glowX = W * (0.25 + rand() * 0.5);
   const glowY = H * (0.26 + rand() * 0.16);
-  const disc = Math.min(W, H) * (0.14 + rand() * 0.1);
-
-  let out = `<rect width="${W}" height="${H}" fill="${C.voidSoft}"/>`;
-  out += `<circle cx="${f(glowX)}" cy="${f(glowY)}" r="${f(
+  let out = `<circle cx="${f(glowX)}" cy="${f(glowY)}" r="${f(
     Math.min(W, H) * 0.55,
   )}" fill="url(#glow)"/>`;
   out += `<circle cx="${f(glowX)}" cy="${f(glowY)}" r="${f(
-    disc,
+    Math.min(W, H) * (0.14 + rand() * 0.1),
   )}" fill="${C.cream}" fill-opacity="0.05"/>`;
-
-  for (let i = 0; i < 26; i += 1) {
-    out += `<circle cx="${f(rand() * W)}" cy="${f(
-      rand() * H * 0.5,
-    )}" r="${f(0.8 + rand() * 1.4)}" fill="${C.cream}" fill-opacity="${f(
-      0.1 + rand() * 0.25,
-    )}"/>`;
+  for (let i = 0; i < 5; i += 1) {
+    const t = i / 4;
+    const baseY = H * (0.52 + t * 0.34);
+    const amp = H * (0.05 + (1 - t) * 0.05);
+    const last = i === 4;
+    const d = ridgePath(rand, W, baseY, amp, 0, 60);
+    out += `<path d="${d}L${W + 60} ${H}L-60 ${H}Z" fill="${last ? C.void : C.voidSoft}"/>`;
+    out += `<path d="${d}" fill="none" stroke="${last ? accent : C.creamSoft}" stroke-opacity="${
+      last ? 0.85 : f(0.07 + (1 - t) * 0.07)
+    }" stroke-width="${last ? 2.4 : 1.4}"/>`;
   }
+  return out;
+}
 
-  const layers = 5;
-  for (let i = 0; i < layers; i += 1) {
-    const t = i / (layers - 1);
-    const d = ridgePath(rand, W, H * (0.52 + t * 0.34), H * (0.05 + (1 - t) * 0.05));
-    const last = i === layers - 1;
-    out += `<path d="${d}L${W} ${H}L0 ${H}Z" fill="${
-      last ? C.void : C.voidSoft
-    }"/>`;
-    out += `<path d="${d}" fill="none" stroke="${
-      last ? accent : C.creamSoft
-    }" stroke-opacity="${last ? 0.85 : f(0.07 + (1 - t) * 0.07)}" stroke-width="${
-      last ? 2.4 : 1.4
+/** Soft overlapping dunes — wide quadratic crests, no horizon line. */
+function dunes(rand, W, H, accent) {
+  let out = "";
+  const n = 6 + Math.floor(rand() * 3);
+  for (let i = 0; i < n; i += 1) {
+    const cx1 = W * rand();
+    const baseY = H * (0.3 + (i / n) * 0.6);
+    const amp = H * (0.16 + rand() * 0.18);
+    const d = `M-100 ${f(baseY + amp)} Q ${f(cx1)} ${f(baseY - amp)} ${f(W * 0.5)} ${f(
+      baseY,
+    )} T ${W + 100} ${f(baseY + amp * 0.4)} L ${W + 100} ${H + 100} L -100 ${H + 100} Z`;
+    out += `<path d="${d}" fill="${C.voidSoft}" fill-opacity="0.9"/>`;
+    out += `<path d="${d.split(" L ")[0]}" fill="none" stroke="${
+      i === n - 1 ? accent : C.creamSoft
+    }" stroke-opacity="${i === n - 1 ? 0.6 : f(0.06 + rand() * 0.06)}" stroke-width="${
+      i === n - 1 ? 1.8 : 1.2
     }"/>`;
   }
   return out;
 }
 
-/** Macro — large displaced contour rings: a texture close-up. */
-function buildMacro(rand, W, H, accent) {
+/** Stepped terraces — quantised contour levels, hairline edges. */
+function terraces(rand, W, H, accent) {
+  let out = "";
+  const levels = 14 + Math.floor(rand() * 6);
+  const seedPath = ridgePath(rand, W, H * 0.5, H * 0.22, 0, 80);
+  const pts = seedPath.replace(/[ML]/g, " ").trim().split(/\s+/).map(Number);
+  const xs = [];
+  const ys = [];
+  for (let i = 0; i < pts.length; i += 2) {
+    xs.push(pts[i]);
+    ys.push(pts[i + 1]);
+  }
+  for (let l = 0; l < levels; l += 1) {
+    const t = l / (levels - 1);
+    const yOff = H * (0.16 + t * 0.74);
+    const step = Math.round(t * 6) / 6;
+    let d = "";
+    for (let i = 0; i < xs.length; i += 1) {
+      const y = Math.max(yOff, ys[i] * (1 - step) + yOff * step);
+      d += `${i ? "L" : "M"}${f(xs[i])} ${f(y)}`;
+    }
+    const major = l % 4 === 0;
+    out += `<path d="${d}" fill="none" stroke="${
+      major ? accent : C.creamSoft
+    }" stroke-opacity="${major ? 0.4 : 0.14}" stroke-width="${major ? 1.6 : 1}"/>`;
+  }
+  return out;
+}
+
+/** A wireframe surface — stacked wavy hairlines. */
+function bands(rand, W, H, accent) {
+  let out = "";
+  const lines = 26 + Math.floor(rand() * 10);
+  for (let i = 0; i < lines; i += 1) {
+    const t = i / (lines - 1);
+    const d = wobbleLine(rand, W, H * (0.24 + t * 0.62), H * (0.02 + (1 - Math.abs(0.5 - t) * 2) * 0.05));
+    const major = i % 5 === 0;
+    out += `<path d="${d}" fill="none" stroke="${
+      major ? accent : C.creamSoft
+    }" stroke-opacity="${major ? 0.35 : 0.12}" stroke-width="${major ? 1.4 : 1}"/>`;
+  }
+  return out;
+}
+
+/** Displaced concentric rings. */
+function rings(rand, W, H, accent) {
   const cx = W * (0.32 + rand() * 0.36);
   const cy = H * (0.3 + rand() * 0.4);
-  let out = `<rect width="${W}" height="${H}" fill="${C.void}"/>`;
-  const rings = 24 + Math.floor(rand() * 10);
+  const count = 24 + Math.floor(rand() * 10);
   const gap = Math.min(W, H) * 0.034;
-  for (let k = 0; k < rings; k += 1) {
+  let out = `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(
+    Math.min(W, H) * 0.5,
+  )}" fill="url(#glow)"/>`;
+  for (let k = 0; k < count; k += 1) {
     const major = k % 5 === 0;
-    out += `<path d="${ringPath(
-      rand,
-      cx,
-      cy,
-      26 + k * gap,
-      k,
-    )}" fill="none" stroke="${k % 3 === 0 ? accent : C.creamSoft}" stroke-opacity="${
-      major ? 0.5 : f(0.12 + (k % 3) * 0.05)
-    }" stroke-width="${major ? 1.8 : 1}"/>`;
+    out += `<path d="${ringPath(rand, cx, cy, 26 + k * gap, k)}" fill="none" stroke="${
+      k % 3 === 0 ? accent : C.creamSoft
+    }" stroke-opacity="${major ? 0.5 : f(0.12 + (k % 3) * 0.05)}" stroke-width="${
+      major ? 1.8 : 1
+    }"/>`;
   }
   out += `<circle cx="${f(cx)}" cy="${f(cy)}" r="4" fill="${accent}" fill-opacity="0.8"/>`;
   return out;
 }
 
-/** Field — a quiet point network over a hairline grid. */
-function buildField(rand, W, H, accent) {
-  let out = `<rect width="${W}" height="${H}" fill="${C.voidSoft}"/>`;
+/** Two rotated line families interfering — a moiré field. */
+function moire(rand, W, H, accent) {
+  const a1 = -0.06 - rand() * 0.05;
+  const a2 = 0.05 + rand() * 0.05;
+  const gap1 = 26 + rand() * 10;
+  const gap2 = 28 + rand() * 12;
+  let out = "";
+  const span = Math.hypot(W, H) * 1.2;
+  for (const [angle, gap, tone] of [
+    [a1, gap1, C.creamSoft],
+    [a2, gap2, accent],
+  ]) {
+    const cx = W / 2 + Math.cos(angle) * span * 0.5;
+    const cy = H / 2 + Math.sin(angle) * span * 0.5;
+    for (let i = -span / gap; i < span / gap; i += 1) {
+      const ox = Math.cos(angle + Math.PI / 2) * i * gap;
+      const oy = Math.sin(angle + Math.PI / 2) * i * gap;
+      out += `<path d="M${f(cx - Math.cos(angle) * span + ox)} ${f(
+        cy - Math.sin(angle) * span + oy,
+      )}L${f(cx + Math.cos(angle) * span + ox)} ${f(
+        cy + Math.sin(angle) * span + oy,
+      )}" stroke="${tone}" stroke-opacity="0.14" stroke-width="1"/>`;
+    }
+  }
+  return out;
+}
+
+/** Radial spokes from an off-centre origin, cut by one long arc. */
+function spokes(rand, W, H, accent) {
+  const cx = W * (0.2 + rand() * 0.2);
+  const cy = H * (0.55 + rand() * 0.2);
+  const count = 34 + Math.floor(rand() * 14);
+  const reach = Math.hypot(W, H);
+  let out = `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(reach * 0.5)}" fill="url(#glow)"/>`;
+  for (let i = 0; i < count; i += 1) {
+    const a = (i / count) * TAU;
+    const r0 = reach * (0.1 + rand() * 0.08);
+    const r1 = reach * (0.55 + rand() * 0.3);
+    const major = i % 6 === 0;
+    out += `<path d="M${f(cx + Math.cos(a) * r0)} ${f(cy + Math.sin(a) * r0)}L${f(
+      cx + Math.cos(a) * r1,
+    )} ${f(cy + Math.sin(a) * r1)}" stroke="${
+      major ? accent : C.creamSoft
+    }" stroke-opacity="${major ? 0.45 : 0.13}" stroke-width="${major ? 1.5 : 1}"/>`;
+  }
+  const arcR = reach * (0.28 + rand() * 0.12);
+  out += `<path d="M${f(cx - arcR)} ${f(cy)}A ${f(arcR)} ${f(arcR)} 0 0 1 ${f(
+    cx + arcR,
+  )} ${f(cy)}" fill="none" stroke="${accent}" stroke-opacity="0.5" stroke-width="1.8"/>`;
+  return out;
+}
+
+/** A quiet point network over a hairline grid. */
+function network(rand, W, H, accent) {
+  let out = "";
   for (let x = 100; x < W; x += 100) {
     out += `<path d="M${x} 0V${H}" stroke="${C.creamSoft}" stroke-opacity="0.04"/>`;
   }
   for (let y = 100; y < H; y += 100) {
     out += `<path d="M0 ${y}H${W}" stroke="${C.creamSoft}" stroke-opacity="0.04"/>`;
   }
-
-  out += `<path d="${ridgePath(rand, W, H * (0.3 + rand() * 0.4), H * 0.04)}" fill="none" stroke="${accent}" stroke-opacity="0.25" stroke-width="1.4"/>`;
-
   const n = 80 + Math.floor(rand() * 30);
   const pts = [];
-  for (let i = 0; i < n; i += 1) {
-    pts.push([rand() * W, rand() * H]);
-  }
+  for (let i = 0; i < n; i += 1) pts.push([rand() * W, rand() * H]);
   for (let i = 0; i < n; i += 1) {
     for (let j = i + 1; j < n; j += 1) {
       if (Math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]) < 150) {
@@ -220,57 +347,110 @@ function buildField(rand, W, H, accent) {
   return out;
 }
 
-function svgDoc(W, H, body, extraDefs = "") {
+/** A constellation — points joined by arcs, reading like a plotted route. */
+function constellation(rand, W, H, accent) {
+  const n = 9 + Math.floor(rand() * 5);
+  const pts = [];
+  for (let i = 0; i < n; i += 1) {
+    pts.push([W * (0.08 + rand() * 0.84), H * (0.14 + rand() * 0.72)]);
+  }
+  let out = "";
+  for (let i = 0; i + 1 < n; i += 1) {
+    const [x1, y1] = pts[i];
+    const [x2, y2] = pts[i + 1];
+    const mx = (x1 + x2) / 2 + (rand() - 0.5) * H * 0.18;
+    const my = (y1 + y2) / 2 + (rand() - 0.5) * H * 0.18;
+    out += `<path d="M${f(x1)} ${f(y1)}Q ${f(mx)} ${f(my)} ${f(x2)} ${f(y2)}" fill="none" stroke="${
+      C.creamSoft
+    }" stroke-opacity="0.22" stroke-width="1"/>`;
+  }
+  pts.forEach(([x, y], i) => {
+    const big = i % 3 === 0;
+    out += `<circle cx="${f(x)}" cy="${f(y)}" r="${big ? 4.5 : 2.2}" fill="${
+      big ? accent : C.cream
+    }" fill-opacity="${big ? 0.95 : 0.5}"/>`;
+    if (big) {
+      out += `<circle cx="${f(x)}" cy="${f(y)}" r="13" fill="none" stroke="${accent}" stroke-opacity="0.3"/>`;
+    }
+  });
+  return out;
+}
+
+const MOTIFS = { ridges, dunes, terraces, bands, rings, moire, spokes, network, constellation };
+
+/* ------------------------------------------------------------ annotation -- */
+
+function accentFor(name) {
+  return name === "green" ? C.green : name === "cream" ? C.cream : C.mint;
+}
+
+/** Landscape plate: the project's title card, typed in the site's own faces. */
+function titleCard(cat, accent, W, H) {
+  const margin = 110;
+  const labelY = H - 232;
+  return `
+<text x="${margin}" y="${labelY}" font-family="${MONO}" font-size="21" letter-spacing="6" fill="${C.creamSoft}" fill-opacity="0.75">${esc(cat.domain.toUpperCase())}</text>
+<text x="${margin}" y="${labelY + 108}" font-family="${SERIF}" font-size="104" fill="${C.cream}">${esc(cat.title)}</text>
+<text x="${W - margin}" y="${labelY + 108}" text-anchor="end" font-family="${MONO}" font-size="21" letter-spacing="4" fill="${accent}" fill-opacity="0.9">${esc(cat.index)} / 05</text>
+<path d="M${margin} ${labelY - 54}H${W - margin}" stroke="${C.creamSoft}" stroke-opacity="0.18"/>`;
+}
+
+/** Macro/field plates: a small plate stamp, bottom-left. */
+function plateStamp(cat, kind, accent, H) {
+  const margin = 84;
+  return `
+<text x="${margin}" y="${H - margin}" font-family="${MONO}" font-size="19" letter-spacing="5" fill="${C.creamSoft}" fill-opacity="0.6">${esc(
+    `${cat.index} · ${cat.title.toUpperCase()} · ${kind.toUpperCase()}`,
+  )}</text>
+<circle cx="${margin - 34}" cy="${H - margin - 6}" r="4" fill="${accent}" fill-opacity="0.85"/>`;
+}
+
+function svgDoc(W, H, body) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs>
 <radialGradient id="glow">
 <stop offset="0" stop-color="${C.mint}" stop-opacity="0.08"/>
 <stop offset="1" stop-color="${C.mint}" stop-opacity="0"/>
 </radialGradient>
-${extraDefs}
 </defs>
+<rect width="${W}" height="${H}" fill="${C.voidSoft}"/>
 ${body}
 </svg>`;
 }
 
-function buildSvg(id, kind) {
-  const rand = mulberry32(fnv1a(`${id}-${kind}`));
+function buildPlate(cat, kind) {
   const { width: W, height: H } = KIND_SIZE[kind];
-  const accent = rand() < 0.65 ? C.mint : C.cream;
-  const body =
-    kind === "landscape"
-      ? buildLandscape(rand, W, H, accent)
-      : kind === "macro"
-        ? buildMacro(rand, W, H, accent)
-        : buildField(rand, W, H, accent);
-  return svgDoc(W, H, body);
+  const rand = mulberry32(fnv1a(`${cat.id}-${kind}`));
+  const accent = accentFor(cat.accent);
+  const motif = MOTIFS[ROLES[cat.id][kind]];
+  const body = motif(rand, W, H, accent);
+  const text = kind === "landscape" ? titleCard(cat, accent, W, H) : plateStamp(cat, kind, accent, H);
+  return svgDoc(W, H, body + text);
 }
 
 /* ------------------------------------------------------------- hero film -- */
 
 const HERO_SEED = mulberry32(fnv1a("hero-film"));
-const HERO_GLOW_X = HERO.width * (0.3 + HERO_SEED() * 0.4);
-const HERO_GLOW_Y = HERO.height * (0.28 + HERO_SEED() * 0.14);
-const HERO_DISC = Math.min(HERO.width, HERO.height) * 0.2;
 const HERO_DUST = Array.from({ length: 40 }, () => ({
   x: HERO_SEED() * HERO.width,
   y: HERO_SEED() * HERO.height * 0.55,
   r: 0.7 + HERO_SEED() * 1.5,
   phase: HERO_SEED(),
 }));
+const HERO_GLOW_X = HERO.width * (0.3 + HERO_SEED() * 0.4);
+const HERO_GLOW_Y = HERO.height * (0.28 + HERO_SEED() * 0.14);
+const HERO_DISC = Math.min(HERO.width, HERO.height) * 0.2;
 const HERO_RIDGES = Array.from({ length: 5 }, (_, i) => {
   const rand = mulberry32(fnv1a(`hero-ridge-${i}`));
   const t = i / 4;
   return {
     baseY: HERO.height * (0.5 + t * 0.36),
-    amp: HERO.height * (0.05 + (1 - t) * 0.05),
     drift: 14 + (1 - t) * 34,
     phase: rand(),
     path: ridgePath(rand, HERO.width, 0, HERO.height * (0.05 + (1 - t) * 0.05), 0, 60),
   };
 });
 
-/** One frame of the hero film; `p` in [0, 1) so the loop is seamless. */
 function buildHeroFrame(p) {
   const a = p * TAU;
   let out = `<rect width="${HERO.width}" height="${HERO.height}" fill="${C.voidSoft}"/>`;
@@ -280,35 +460,35 @@ function buildHeroFrame(p) {
   out += `<circle cx="${f(HERO_GLOW_X)}" cy="${f(HERO_GLOW_Y)}" r="${f(
     HERO_DISC * (1 + 0.03 * Math.sin(a)),
   )}" fill="${C.cream}" fill-opacity="0.05"/>`;
-
   for (const d of HERO_DUST) {
-    const tw = 0.08 + 0.22 * Math.abs(Math.sin(a + d.phase * TAU));
-    out += `<circle cx="${f(d.x)}" cy="${f(d.y)}" r="${f(d.r)}" fill="${C.cream}" fill-opacity="${f(tw)}"/>`;
+    out += `<circle cx="${f(d.x)}" cy="${f(d.y)}" r="${f(d.r)}" fill="${C.cream}" fill-opacity="${f(
+      0.08 + 0.22 * Math.abs(Math.sin(a + d.phase * TAU)),
+    )}"/>`;
   }
-
   out += `<g transform="translate(0 ${f(Math.sin(a) * 6)})">`;
   HERO_RIDGES.forEach((r, i) => {
     const last = i === 4;
-    const drift = Math.sin(a + r.phase * TAU) * r.drift;
-    const shift = `transform="translate(${f(drift)} ${f(r.baseY)})"`;
-    // fill first, then the edge line on top
+    const shift = `transform="translate(${f(Math.sin(a + r.phase * TAU) * r.drift)} ${f(r.baseY)})"`;
     out += `<path d="${r.path}L${HERO.width + 60} ${HERO.height}L-60 ${HERO.height}Z" ${shift} fill="${
       last ? C.void : C.voidSoft
     }"/>`;
     out += `<path d="${r.path}" ${shift} fill="none" stroke="${
       last ? C.mint : C.creamSoft
-    }" stroke-opacity="${last ? 0.85 : f(0.07 + (1 - i / 4) * 0.07)}" stroke-width="${
-      last ? 2.4 : 1.4
-    }"/>`;
+    }" stroke-opacity="${last ? 0.85 : f(0.07 + (1 - i / 4) * 0.07)}" stroke-width="${last ? 2.4 : 1.4}"/>`;
   });
   out += `</g>`;
-
-  // a mint reading line sweeping the front ridge
-  const sweep = (p * (HERO.width + 700)) - 350;
+  const sweep = p * (HERO.width + 700) - 350;
   out += `<path d="M${f(sweep)} 0V${HERO.height}" stroke="${C.mint}" stroke-opacity="0.16" stroke-width="1.5"/>`;
   out += `<path d="M${f(sweep - 6)} 0V${HERO.height}" stroke="${C.mint}" stroke-opacity="0.06" stroke-width="6"/>`;
-
-  return svgDoc(HERO.width, HERO.height, out);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${HERO.width}" height="${HERO.height}" viewBox="0 0 ${HERO.width} ${HERO.height}">
+<defs>
+<radialGradient id="glow">
+<stop offset="0" stop-color="${C.mint}" stop-opacity="0.08"/>
+<stop offset="1" stop-color="${C.mint}" stop-opacity="0"/>
+</radialGradient>
+</defs>
+${out}
+</svg>`;
 }
 
 /* --------------------------------------------------------------- cursors -- */
@@ -320,27 +500,27 @@ function cursorSvg(size, ringR, dotR) {
 </svg>`;
 }
 
-/* ----------------------------------------------------------------- main -- */
+/* ------------------------------------------------------------------ main -- */
 
-mkdirSync(OUT_DIR, { recursive: true });
 const render = (svg, fitWidth) =>
   new Resvg(svg, {
-    font: { loadSystemFonts: false },
+    font: { fontFiles: FONT_FILES, loadSystemFonts: false, defaultFontFamily: MONO },
     ...(fitWidth ? { fitTo: { mode: "width", value: fitWidth } } : {}),
   })
     .render()
     .asPng();
 
-for (const id of IDS) {
-  rmSync(join(OUT_DIR, `${id}.png`), { force: true }); // superseded single poster
+mkdirSync(OUT_DIR, { recursive: true });
+
+for (const cat of CATALOG) {
+  rmSync(join(OUT_DIR, `${cat.id}.png`), { force: true }); // superseded single poster
   for (const kind of Object.keys(KIND_SIZE)) {
-    const png = render(buildSvg(id, kind));
-    writeFileSync(join(OUT_DIR, `${id}-${kind}.png`), png);
-    console.log(`renders/${id}-${kind}.png  ${png.length} bytes`);
+    const png = render(buildPlate(cat, kind));
+    writeFileSync(join(OUT_DIR, `${cat.id}-${kind}.png`), png);
+    console.log(`renders/${cat.id}-${kind}.png  ${png.length} bytes`);
   }
 }
 
-// hero poster + film
 writeFileSync(join(OUT_DIR, "hero-poster.png"), render(buildHeroFrame(0)));
 const frameDir = mkdtempSync(join(tmpdir(), "hero-frames-"));
 const frames = HERO.fps * HERO.seconds;
@@ -370,22 +550,19 @@ execFileSync(
 rmSync(frameDir, { recursive: true, force: true });
 console.log("renders/hero.mp4");
 
-// cursors
 writeFileSync(join(PUBLIC_DIR, "cursor.png"), render(cursorSvg(32, 4, 2), 32));
 writeFileSync(join(PUBLIC_DIR, "cursor-link.png"), render(cursorSvg(32, 10, 2.5), 32));
 console.log("cursor.png + cursor-link.png");
 
-/* ---------------------------------------------------------------- favicon -- */
-
 const iconPng = render(readFileSync(join(PUBLIC_DIR, "icon.svg"), "utf8"), 32);
 const ico = Buffer.alloc(22);
-ico.writeUInt16LE(1, 2); // image type: icon
-ico.writeUInt16LE(1, 4); // one entry
-ico.writeUInt8(32, 6); // width
-ico.writeUInt8(32, 7); // height
-ico.writeUInt16LE(1, 10); // planes
-ico.writeUInt16LE(32, 12); // bits per pixel
-ico.writeUInt32LE(iconPng.length, 14); // payload size
-ico.writeUInt32LE(22, 18); // payload offset
+ico.writeUInt16LE(1, 2);
+ico.writeUInt16LE(1, 4);
+ico.writeUInt8(32, 6);
+ico.writeUInt8(32, 7);
+ico.writeUInt16LE(1, 10);
+ico.writeUInt16LE(32, 12);
+ico.writeUInt32LE(iconPng.length, 14);
+ico.writeUInt32LE(22, 18);
 writeFileSync(join(PUBLIC_DIR, "favicon.ico"), Buffer.concat([ico, iconPng]));
 console.log(`favicon.ico  ${22 + iconPng.length} bytes`);
