@@ -61,6 +61,7 @@ export function Footer() {
                 <li key={s.id}>
                   <Link
                     href={`/info#${s.id}`}
+                    transitionTypes={["nav-forward"]}
                     className="text-soft transition-colors hover:text-main"
                   >
                     {d.nav.sections[s.id]}

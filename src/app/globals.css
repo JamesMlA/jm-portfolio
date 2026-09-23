@@ -241,6 +241,83 @@
   animation-timing-function: cubic-bezier(0.28, 0.11, 0.32, 1);
 }
 
+/* Route navigations slide directionally: forward goes left, back goes right.
+   Old content leaves quickly; new content arrives after it, more gently. */
+::view-transition-old(.nav-forward) {
+  --slide-offset: -60px;
+  animation:
+    150ms ease-in both vt-fade reverse,
+    400ms ease-in-out both vt-slide reverse;
+}
+
+::view-transition-new(.nav-forward) {
+  --slide-offset: 60px;
+  animation:
+    210ms ease-out 150ms both vt-fade,
+    400ms ease-out both vt-slide;
+}
+
+::view-transition-old(.nav-back) {
+  --slide-offset: 60px;
+  animation:
+    150ms ease-in both vt-fade reverse,
+    400ms ease-in-out both vt-slide reverse;
+}
+
+::view-transition-new(.nav-back) {
+  --slide-offset: -60px;
+  animation:
+    210ms ease-out 150ms both vt-fade,
+    400ms ease-out both vt-slide;
+}
+
+@keyframes vt-fade {
+  from {
+    filter: blur(3px);
+    opacity: 0;
+  }
+  to {
+    filter: blur(0);
+    opacity: 1;
+  }
+}
+
+@keyframes vt-slide {
+  from {
+    translate: var(--slide-offset);
+  }
+  to {
+    translate: 0;
+  }
+}
+
+/* The bar is the spatial anchor: it must not slide with the page. */
+::view-transition-group(site-header) {
+  animation: none;
+  z-index: 100;
+}
+
+::view-transition-old(site-header) {
+  display: none;
+}
+
+::view-transition-new(site-header) {
+  animation: none;
+}
+
+/* During a transition the overlay swallows clicks; let them through. */
+::view-transition {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
 /* ------------------------------------------------------------------ *
  * Scroll-reveal
  *
