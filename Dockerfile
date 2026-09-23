@@ -14,7 +14,11 @@ COPY . .
 # The GitHub section is fetched at build time. The public API needs no token at
 # this request volume, and the section degrades to its static fallback if the
 # API is unavailable — so no credential is passed into the image layer.
+# ffmpeg is a BUILD-time dependency: scripts/generate-renders.mjs encodes the
+# hero film from generated frames during `prebuild`. It is not needed in (and
+# not copied to) the runtime stage.
 ENV NEXT_TELEMETRY_DISABLED=1
+RUN apk add --no-cache ffmpeg
 RUN npm run build
 
 # ---- runtime -------------------------------------------------------------

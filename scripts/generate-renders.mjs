@@ -703,33 +703,47 @@ for (const cat of CATALOG) {
 }
 
 writeFileSync(join(OUT_DIR, "hero-poster.png"), render(buildHeroFrame(0)));
-const frameDir = mkdtempSync(join(tmpdir(), "hero-frames-"));
-const frames = HERO.fps * HERO.seconds;
-for (let i = 0; i < frames; i += 1) {
-  writeFileSync(
-    join(frameDir, `f${String(i).padStart(4, "0")}.png`),
-    render(buildHeroFrame(i / frames), HERO.width),
-  );
+
+// The film needs ffmpeg — installed in the Docker build stage and normally
+// present on dev machines. Without it the committed hero.mp4 is kept as-is.
+let hasFfmpeg = true;
+try {
+  execFileSync("ffmpeg", ["-version"], { stdio: "ignore" });
+} catch {
+  hasFfmpeg = false;
 }
-execFileSync(
-  "ffmpeg",
-  [
-    "-y",
-    "-framerate", String(HERO.fps),
-    "-i", join(frameDir, "f%04d.png"),
-    "-c:v", "libx264",
-    "-pix_fmt", "yuv420p",
-    "-crf", "30",
-    "-preset", "slow",
-    "-movflags", "+faststart",
-    "-fflags", "+bitexact",
-    "-flags:v", "+bitexact",
-    join(OUT_DIR, "hero.mp4"),
-  ],
-  { stdio: "ignore" },
-);
-rmSync(frameDir, { recursive: true, force: true });
-console.log("renders/hero.mp4");
+
+if (hasFfmpeg) {
+  const frameDir = mkdtempSync(join(tmpdir(), "hero-frames-"));
+  const frames = HERO.fps * HERO.seconds;
+  for (let i = 0; i < frames; i += 1) {
+    writeFileSync(
+      join(frameDir, `f${String(i).padStart(4, "0")}.png`),
+      render(buildHeroFrame(i / frames), HERO.width),
+    );
+  }
+  execFileSync(
+    "ffmpeg",
+    [
+      "-y",
+      "-framerate", String(HERO.fps),
+      "-i", join(frameDir, "f%04d.png"),
+      "-c:v", "libx264",
+      "-pix_fmt", "yuv420p",
+      "-crf", "30",
+      "-preset", "slow",
+      "-movflags", "+faststart",
+      "-fflags", "+bitexact",
+      "-flags:v", "+bitexact",
+      join(OUT_DIR, "hero.mp4"),
+    ],
+    { stdio: "ignore" },
+  );
+  rmSync(frameDir, { recursive: true, force: true });
+  console.log("renders/hero.mp4");
+} else {
+  console.warn("ffmpeg not found — keeping the committed renders/hero.mp4");
+}
 
 writeFileSync(join(PUBLIC_DIR, "cursor.png"), render(cursorSvg(32, 4, 2), 32));
 writeFileSync(join(PUBLIC_DIR, "cursor-link.png"), render(cursorSvg(32, 10, 2.5), 32));
