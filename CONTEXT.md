@@ -61,10 +61,12 @@ The narrow right-hand column beside an anchor: stack tags, real links
 _Avoid_: badges, skill meters, invented metrics
 
 **Render panel**:
-A full-bleed generated artwork on the work spine — two to three per case study
-(wide landscape, detail macro, abstract data field), seeded and build-time, in
-James's colors. It is the imagery of the page.
-_Avoid_: screenshots, stock photos, decorative clip art
+A full-bleed generated artwork on the work spine — three per case study, each
+with its own motif, seeded and build-time, in James's colors. It is the imagery
+of the page. The first plate carries a title card (domain, title, index); the
+others carry a small stamp with the study's identity — no internal vocabulary
+(landscape/macro/field are code names only, never shown).
+_Avoid_: screenshots, stock photos, decorative clip art, named "views"
 
 **Detail strip**:
 A narrow left-aligned band of small grey text between render panels: tiny

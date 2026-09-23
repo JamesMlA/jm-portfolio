@@ -395,12 +395,12 @@ function titleCard(cat, accent, W, H) {
 <path d="M${margin} ${labelY - 54}H${W - margin}" stroke="${C.creamSoft}" stroke-opacity="0.18"/>`;
 }
 
-/** Macro/field plates: a small plate stamp, bottom-left. */
-function plateStamp(cat, kind, accent, H) {
+/** Macro/field plates: a small stamp carrying just the study's identity. */
+function plateStamp(cat, accent, H) {
   const margin = 84;
   return `
 <text x="${margin}" y="${H - margin}" font-family="${MONO}" font-size="19" letter-spacing="5" fill="${C.creamSoft}" fill-opacity="0.6">${esc(
-    `${cat.index} · ${cat.title.toUpperCase()} · ${kind.toUpperCase()}`,
+    `${cat.index} · ${cat.title.toUpperCase()}`,
   )}</text>
 <circle cx="${margin - 34}" cy="${H - margin - 6}" r="4" fill="${accent}" fill-opacity="0.85"/>`;
 }
@@ -424,7 +424,7 @@ function buildPlate(cat, kind) {
   const accent = accentFor(cat.accent);
   const motif = MOTIFS[ROLES[cat.id][kind]];
   const body = motif(rand, W, H, accent);
-  const text = kind === "landscape" ? titleCard(cat, accent, W, H) : plateStamp(cat, kind, accent, H);
+  const text = kind === "landscape" ? titleCard(cat, accent, W, H) : plateStamp(cat, accent, H);
   return svgDoc(W, H, body + text);
 }
 
