@@ -52,13 +52,13 @@ const CATALOG = [
   { id: "mlops", index: "05", title: "AI / MLOps", domain: "Infrastructure for machine learning", accent: "cream" },
 ];
 
-/** Every project gets its own trio — fifteen plates, nine motifs, few repeats. */
+/** Every project gets its own trio, each including one craft reference. */
 const ROLES = {
-  "cloud-infrastructure": { landscape: "ridges", macro: "terraces", field: "network" },
-  "kubernetes-platform": { landscape: "bands", macro: "moire", field: "constellation" },
-  "cicd-automation": { landscape: "terraces", macro: "spokes", field: "network" },
-  "streaming-infrastructure": { landscape: "dunes", macro: "rings", field: "constellation" },
-  mlops: { landscape: "spokes", macro: "bands", field: "rings" },
+  "cloud-infrastructure": { landscape: "ridges", macro: "hexgrid", field: "network" },
+  "kubernetes-platform": { landscape: "cluster", macro: "moire", field: "wheel" },
+  "cicd-automation": { landscape: "terminal", macro: "spokes", field: "constellation" },
+  "streaming-infrastructure": { landscape: "dunes", macro: "rings", field: "tree" },
+  mlops: { landscape: "bands", macro: "terraces", field: "hexgrid" },
 };
 
 const HERO = { width: 1600, height: 900, fps: 20, seconds: 12 };
@@ -376,7 +376,188 @@ function constellation(rand, W, H, accent) {
   return out;
 }
 
-const MOTIFS = { ridges, dunes, terraces, bands, rings, moire, spokes, network, constellation };
+/* ------------------------------------------------- domain motifs (craft) -- */
+
+/** A terminal buffer: prompt column, code lines, one live block cursor. */
+function terminal(rand, W, H, accent) {
+  const marginX = 150;
+  const rows = 15 + Math.floor(rand() * 4);
+  const top = H * 0.26;
+  const step = (H * 0.58) / rows;
+  const promptW = step * 2.1;
+  let out = `<circle cx="${f(W * 0.7)}" cy="${f(H * 0.3)}" r="${f(
+    Math.min(W, H) * 0.42,
+  )}" fill="url(#glow)"/>`;
+  out += `<circle cx="${f(W * 0.7)}" cy="${f(H * 0.3)}" r="${f(
+    Math.min(W, H) * 0.16,
+  )}" fill="${C.cream}" fill-opacity="0.05"/>`;
+  const cursorRow = Math.floor(rand() * rows);
+  for (let r = 0; r < rows; r += 1) {
+    const y = top + r * step;
+    const glyph = r % 4 === 3 ? "$" : "&gt;";
+    out += `<text x="${marginX}" y="${f(y + step * 0.72)}" font-family="${MONO}" font-size="${f(
+      step * 1.25,
+    )}" fill="${accent}" fill-opacity="0.88">${glyph}</text>`;
+    let x = marginX + promptW;
+    const blocks = 2 + Math.floor(rand() * 3);
+    for (let b = 0; b < blocks; b += 1) {
+      const w = 46 + rand() * 300;
+      out += `<rect x="${f(x)}" y="${f(y + step * 0.18)}" width="${f(w)}" height="${f(
+        step * 0.4,
+      )}" rx="${f(step * 0.1)}" fill="${C.cream}" fill-opacity="${f(0.12 + rand() * 0.08)}"/>`;
+      x += w + 28;
+      if (x > W - marginX - 80) break;
+    }
+    if (r === cursorRow) {
+      out += `<rect x="${f(x)}" y="${f(y + step * 0.08)}" width="${f(
+        step * 0.62,
+      )}" height="${f(step * 0.8)}" rx="2" fill="${accent}" fill-opacity="0.95"/>`;
+    }
+  }
+  return out;
+}
+
+/** A cluster topology: nodes holding pods, joined by hairline mesh. */
+function cluster(rand, W, H, accent) {
+  let out = `<circle cx="${f(W * 0.5)}" cy="${f(H * 0.45)}" r="${f(
+    Math.min(W, H) * 0.55,
+  )}" fill="url(#glow)"/>`;
+  const cols = 4;
+  const rows = 2 + Math.floor(rand() * 2);
+  const nodes = [];
+  const nodeW = (W - 2 * 180) / cols;
+  for (let c = 0; c < cols; c += 1) {
+    for (let r = 0; r < rows; r += 1) {
+      const x = 180 + c * nodeW + (r % 2 ? 40 : 0);
+      const y = H * 0.3 + r * (H * 0.32);
+      nodes.push({ x, y, w: nodeW - 90, h: H * 0.2 });
+    }
+  }
+  for (let i = 0; i < nodes.length; i += 1) {
+    for (let j = i + 1; j < nodes.length; j += 1) {
+      if (rand() < 0.35) {
+        const a = nodes[i];
+        const b = nodes[j];
+        out += `<path d="M${f(a.x + a.w / 2)} ${f(a.y + a.h / 2)}L${f(
+          b.x + b.w / 2,
+        )} ${f(b.y + b.h / 2)}" stroke="${accent}" stroke-opacity="0.14"/>`;
+      }
+    }
+  }
+  for (const n of nodes) {
+    out += `<rect x="${f(n.x)}" y="${f(n.y)}" width="${f(n.w)}" height="${f(
+      n.h,
+    )}" rx="10" fill="${C.void}" fill-opacity="0.55" stroke="${C.creamSoft}" stroke-opacity="0.22"/>`;
+    const pods = 3 + Math.floor(rand() * 4);
+    for (let p = 0; p < pods; p += 1) {
+      const pw = 18;
+      const gap = 12;
+      const px = n.x + 22 + p * (pw + gap);
+      const py = n.y + n.h / 2 - pw / 2 + (rand() - 0.5) * 12;
+      const lit = rand() < 0.32;
+      out += `<rect x="${f(px)}" y="${f(py)}" width="${pw}" height="${pw}" rx="3" fill="${
+        lit ? accent : C.cream
+      }" fill-opacity="${lit ? 0.78 : 0.16}"/>`;
+    }
+  }
+  return out;
+}
+
+/** The helm wheel: seven spokes, two rings, one lit hub. */
+function wheel(rand, W, H, accent) {
+  const cx = W * (0.4 + rand() * 0.2);
+  const cy = H * 0.5;
+  const R = Math.min(W, H) * (0.3 + rand() * 0.06);
+  const r0 = R * 0.3;
+  let out = `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(R * 1.5)}" fill="url(#glow)"/>`;
+  out += `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(R * 1.06)}" fill="none" stroke="${C.creamSoft}" stroke-opacity="0.5"/>`;
+  out += `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(r0)}" fill="none" stroke="${C.creamSoft}" stroke-opacity="0.55"/>`;
+  for (let k = 0; k < 7; k += 1) {
+    const a = (k / 7) * TAU - Math.PI / 2;
+    const tipX = cx + Math.cos(a) * R;
+    const tipY = cy + Math.sin(a) * R;
+    const perp = a + Math.PI / 2;
+    const halfW = R * 0.085;
+    out += `<path d="M${f(cx + Math.cos(a) * r0)} ${f(cy + Math.sin(a) * r0)}L${f(
+      tipX + Math.cos(perp) * halfW,
+    )} ${f(tipY + Math.sin(perp) * halfW)}L${f(tipX - Math.cos(perp) * halfW)} ${f(
+      tipY - Math.sin(perp) * halfW,
+    )}Z" fill="${accent}" fill-opacity="0.3" stroke="${accent}" stroke-opacity="0.72"/>`;
+  }
+  out += `<circle cx="${f(cx)}" cy="${f(cy)}" r="7" fill="${accent}" fill-opacity="0.9"/>`;
+  return out;
+}
+
+/** A filesystem tree: orthogonal branches ending in files, root glyph. */
+function tree(rand, W, H, accent) {
+  const top = H * 0.18;
+  const bottom = H * 0.86;
+  const rootX = W * 0.16;
+  let out = `<text x="${f(rootX - 78)}" y="${f(H * 0.5 + 10)}" font-family="${MONO}" font-size="34" fill="${accent}" fill-opacity="0.5">#</text>`;
+  const branches = 4 + Math.floor(rand() * 2);
+  for (let b = 0; b < branches; b += 1) {
+    const y = top + ((b + 0.5) / branches) * (bottom - top);
+    const x2 = rootX + W * (0.22 + rand() * 0.28);
+    out += `<path d="M${f(rootX)} ${f(H * 0.5)}H${f(rootX + 22)}V${f(y)}H${f(x2)}" fill="none" stroke="${C.creamSoft}" stroke-opacity="0.2"/>`;
+    const leaves = 2 + Math.floor(rand() * 3);
+    const x3 = x2 + W * (0.16 + rand() * 0.14);
+    out += `<path d="M${f(x2)} ${f(y)}H${f(x3)}" fill="none" stroke="${C.creamSoft}" stroke-opacity="0.14"/>`;
+    for (let l = 0; l < leaves; l += 1) {
+      const ly = y - (leaves - 1) * 14 + l * 28;
+      const lit = rand() < 0.3;
+      out += `<path d="M${f(x3)} ${f(y)}V${f(ly)}H${f(x3 + 26)}" fill="none" stroke="${C.creamSoft}" stroke-opacity="0.14"/>`;
+      out += `<rect x="${f(x3 + 30)}" y="${f(ly - 7)}" width="14" height="14" rx="3" fill="${
+        lit ? accent : C.cream
+      }" fill-opacity="${lit ? 0.75 : 0.15}"/>`;
+    }
+  }
+  return out;
+}
+
+/** A hex lattice of pods — a few lit, a couple ringed. */
+function hexgrid(rand, W, H, accent) {
+  const size = 62 + rand() * 10;
+  const dx = size * Math.sqrt(3);
+  const dy = size * 1.5;
+  let out = `<circle cx="${f(W * 0.5)}" cy="${f(H * 0.5)}" r="${f(
+    Math.min(W, H) * 0.6,
+  )}" fill="url(#glow)"/>`;
+  for (let row = -1; row * dy < H + dy; row += 1) {
+    for (let col = -1; col * dx < W + dx; col += 1) {
+      const cx = col * dx + (row % 2 ? dx / 2 : 0);
+      const cy = row * dy;
+      const pts = Array.from({ length: 6 }, (_, i) => {
+        const a = (i / 6) * TAU - Math.PI / 2;
+        return `${f(cx + Math.cos(a) * size * 0.92)} ${f(cy + Math.sin(a) * size * 0.92)}`;
+      }).join("L");
+      const roll = rand();
+      const lit = roll < 0.16;
+      out += `<path d="M${pts}Z" fill="${lit ? accent : "none"}" fill-opacity="${
+        lit ? 0.32 : 0
+      }" stroke="${lit ? accent : C.creamSoft}" stroke-opacity="${
+        lit ? 0.8 : 0.2
+      }" stroke-width="${lit ? 1.6 : 1}"/>`;
+    }
+  }
+  return out;
+}
+
+const MOTIFS = {
+  ridges,
+  dunes,
+  terraces,
+  bands,
+  rings,
+  moire,
+  spokes,
+  network,
+  constellation,
+  terminal,
+  cluster,
+  wheel,
+  tree,
+  hexgrid,
+};
 
 /* ------------------------------------------------------------ annotation -- */
 
@@ -389,20 +570,20 @@ function titleCard(cat, accent, W, H) {
   const margin = 110;
   const labelY = H - 232;
   return `
-<text x="${margin}" y="${labelY}" font-family="${MONO}" font-size="21" letter-spacing="6" fill="${C.creamSoft}" fill-opacity="0.75">${esc(cat.domain.toUpperCase())}</text>
-<text x="${margin}" y="${labelY + 108}" font-family="${SERIF}" font-size="104" fill="${C.cream}">${esc(cat.title)}</text>
-<text x="${W - margin}" y="${labelY + 108}" text-anchor="end" font-family="${MONO}" font-size="21" letter-spacing="4" fill="${accent}" fill-opacity="0.9">${esc(cat.index)} / 05</text>
-<path d="M${margin} ${labelY - 54}H${W - margin}" stroke="${C.creamSoft}" stroke-opacity="0.18"/>`;
+<text x="${margin}" y="${labelY}" font-family="${MONO}" font-size="24" letter-spacing="6" fill="${C.creamSoft}" fill-opacity="0.8">${esc(cat.domain.toUpperCase())}</text>
+<text x="${margin}" y="${labelY + 118}" font-family="${SERIF}" font-size="118" fill="${C.cream}">${esc(cat.title)}</text>
+<text x="${W - margin}" y="${labelY + 118}" text-anchor="end" font-family="${MONO}" font-size="24" letter-spacing="4" fill="${accent}" fill-opacity="0.9">${esc(cat.index)} / 05</text>
+<path d="M${margin} ${labelY - 58}H${W - margin}" stroke="${C.creamSoft}" stroke-opacity="0.18"/>`;
 }
 
 /** Macro/field plates: a small stamp carrying just the study's identity. */
 function plateStamp(cat, accent, H) {
   const margin = 84;
   return `
-<text x="${margin}" y="${H - margin}" font-family="${MONO}" font-size="19" letter-spacing="5" fill="${C.creamSoft}" fill-opacity="0.6">${esc(
+<text x="${margin}" y="${H - margin}" font-family="${MONO}" font-size="22" letter-spacing="5" fill="${C.creamSoft}" fill-opacity="0.68">${esc(
     `${cat.index} · ${cat.title.toUpperCase()}`,
   )}</text>
-<circle cx="${margin - 34}" cy="${H - margin - 6}" r="4" fill="${accent}" fill-opacity="0.85"/>`;
+<circle cx="${margin - 38}" cy="${H - margin - 7}" r="5" fill="${accent}" fill-opacity="0.85"/>`;
 }
 
 function svgDoc(W, H, body) {
