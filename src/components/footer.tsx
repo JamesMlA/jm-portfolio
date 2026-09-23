@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useI18n } from "./i18n";
 import { site, sections } from "@/content/site";
+import { projects } from "@/content/data";
 import { cx } from "@/lib/utils";
 
 /**
@@ -28,6 +29,28 @@ export function Footer() {
 
   return (
     <footer className="tone-dark border-t hairline px-7 py-14">
+      {/* end-of-scroll collage — stills from the work, dimmed until hover */}
+      <div className="mx-auto mb-14 grid max-w-[1400px] grid-cols-3 gap-3 sm:grid-cols-5">
+        {projects.map((project) => (
+          <Link
+            key={project.id}
+            href={`/#${project.id}`}
+            className="group block overflow-hidden rounded-sm"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/renders/${project.id}-macro.png`}
+              alt=""
+              aria-hidden
+              loading="lazy"
+              width={1600}
+              height={1000}
+              className="aspect-[4/3] w-full object-cover opacity-55 transition-[transform,opacity] duration-500 ease-out group-hover:scale-[1.04] group-hover:opacity-100"
+            />
+          </Link>
+        ))}
+      </div>
+
       <div className="mx-auto grid max-w-[1400px] gap-10 text-[12px] sm:grid-cols-3">
         <nav aria-label={d.nav.menu}>
           <p className="kicker text-soft">{d.nav.menu}</p>

@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
 import { useI18n } from "./i18n";
-import { Tag, TextLink, Words } from "./ui";
+import { Reveal, Tag, TextLink, Words } from "./ui";
 import { projects, type Project } from "@/content/data";
 import { cx } from "@/lib/utils";
 
@@ -35,18 +35,23 @@ function Panel({
   const size = PANEL_SIZE[kind];
 
   return (
-    <figure ref={ref} className={cx("relative overflow-hidden", className)}>
-      <motion.img
-        src={`/renders/${id}-${kind}.png`}
-        alt=""
-        aria-hidden
-        loading="lazy"
-        width={size.width}
-        height={size.height}
-        style={reduced ? undefined : { scale }}
-        className="h-full w-full object-cover"
-      />
-    </figure>
+    <Reveal className={cx("block", className)}>
+      <figure
+        ref={ref}
+        className="relative h-full w-full overflow-hidden transition-[filter] duration-700 ease-out hover:brightness-110"
+      >
+        <motion.img
+          src={`/renders/${id}-${kind}.png`}
+          alt=""
+          aria-hidden
+          loading="lazy"
+          width={size.width}
+          height={size.height}
+          style={reduced ? undefined : { scale }}
+          className="h-full w-full object-cover"
+        />
+      </figure>
+    </Reveal>
   );
 }
 
@@ -93,7 +98,7 @@ function Chapter({ project }: { project: Project }) {
   const { d, l } = useI18n();
 
   return (
-    <article className="tone-dark relative pb-16 md:pb-24">
+    <article id={project.id} className="tone-dark relative pb-16 md:pb-24">
       <header className="mx-auto grid max-w-[1400px] grid-cols-1 gap-10 px-7 pt-16 md:pt-24 lg:grid-cols-12">
         <div className="lg:col-span-7">
           <p className="kicker text-soft">{l(project.domain)}</p>

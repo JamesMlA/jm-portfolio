@@ -75,6 +75,26 @@
     background: var(--color-void);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    cursor: url("/cursor.png") 16 16, auto;
+  }
+
+  /* the reference's detail: a distinct cursor over anything actionable */
+  a,
+  button,
+  [role="button"],
+  label,
+  summary {
+    cursor: url("/cursor-link.png") 16 16, pointer;
+  }
+
+  /* pointers without a mouse keep their native affordances */
+  @media (pointer: coarse) {
+    body,
+    a,
+    button,
+    [role="button"] {
+      cursor: auto;
+    }
   }
 
   ::selection {
