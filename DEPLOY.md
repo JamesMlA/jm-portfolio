@@ -57,6 +57,47 @@ dokploy application deploy --applicationId b7DaVp7yhHJeb26SoMtcy
 `application.redeploy` reuses the build cache and can ship a stale commit; use
 `application.deploy` after pushing so the new revision is actually picked up.
 
+### Triggering a deploy without the GitHub webhook
+
+The app has `autoDeploy: true`, but that only fires if the repository has a
+webhook pointing at Dokploy. Until that webhook exists in GitHub, trigger the
+deploy with the app's own webhook token — it is stored as
+`application.refreshToken` in the Dokploy database and used as
+`POST /api/deploy/<refreshToken>`. The request must look like a GitHub push,
+otherwise Dokploy answers `{"message":"Branch Not Match"}`:
+
+```bash
+TOKEN=$(sudo docker exec dokploy-postgres.1.<id> psql -U dokploy -d dokploy -tAc \
+  "select \"refreshToken\" from application where name='portfolio-web'")
+
+curl -sS -L --post301 --post302 --post303 \
+  -X POST "https://dokploy.ancordss.me.uk/api/deploy/$TOKEN" \
+  -H "Content-Type: application/json" -H "X-GitHub-Event: push" \
+  -d '{"ref":"refs/heads/main"}'
+```
+
+Two traps that cost time once:
+
+- **The branch fields were empty.** Dokploy compares the pushed branch against
+  `customGitBranch` for `sourceType = "git"` apps (not `branch`); with both
+  NULL the webhook rejects every push. Fixed 2026-09-23 (`branch` and
+  `customGitBranch` = `main`).
+- **The provider is decided by headers.** `getProviderByHeader` reads
+  `x-github-event`; without it the branch never parses and the same
+  "Branch Not Match" message is returned.
+
+Wiring the real webhook in GitHub (Settings → Webhooks → add
+`https://dokploy.ancordss.me.uk/api/deploy/<refreshToken>`, content type
+`application/json`, push events) makes every push to `main` deploy by itself.
+The token is a secret: rotate it in the app settings if it ever leaks.
+
+### Build dependencies
+
+The image installs **ffmpeg** in the build stage only: `prebuild` runs
+`scripts/generate-renders.mjs`, which encodes the looping hero film from
+generated frames. Without ffmpeg the generator warns and keeps the committed
+`public/renders/hero.mp4` instead of failing.
+
 ## Verification
 
 ```bash
