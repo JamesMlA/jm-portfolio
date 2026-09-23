@@ -8,9 +8,9 @@ export const contentType = "image/png";
 /* Palette mirrored from src/app/globals.css (`@theme`). No webfonts: the card
  * rasterizes with the generic system-sans stack — font-free rendering keeps
  * this file safe under `output: "standalone"`. */
-const PAPER = "#f5f5f7";
-const INK = "#1d1d1f";
-const SOFT = "#6e6e73";
+const PAPER = "#f3eee3";
+const INK = "#292319";
+const SOFT = "#6f6552";
 
 const SANS =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif";
@@ -43,7 +43,7 @@ export default function OpengraphImage() {
             width: 1000,
             height: 760,
             backgroundImage:
-              "radial-gradient(circle, rgba(0,113,227,0.16) 0%, rgba(0,113,227,0.05) 45%, rgba(245,245,247,0) 72%)",
+              "radial-gradient(circle, rgba(79,227,161,0.18) 0%, rgba(79,227,161,0.06) 45%, rgba(243,238,227,0) 72%)",
           }}
         />
 

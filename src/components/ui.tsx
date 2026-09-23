@@ -1,14 +1,15 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { useI18n } from "./i18n";
+import { Reveal } from "./reveal";
 import { cx } from "@/lib/utils";
 
-export { Reveal } from "./reveal";
+export { Reveal };
 
 /**
  * A story section: one tone (light | gray | dark), one measure. Text columns
- * sit in Apple's 980px grid; visuals may ask for more with `wide`.
+ * sit in a 980px grid; visuals may ask for more with `wide`.
  */
 export function Section({
   id,
@@ -46,7 +47,7 @@ export function Section({
   );
 }
 
-/** The small colored label above a story headline. */
+/** The signature label — mono, tracked, in the accent. */
 export function Kicker({
   children,
   className,
@@ -54,12 +55,40 @@ export function Kicker({
   children: ReactNode;
   className?: string;
 }) {
+  return <p className={cx("kicker text-link", className)}>{children}</p>;
+}
+
+/**
+ * Headline text word by word: each word rises out of its own band, staggered.
+ * The rise is gated behind `scripting: enabled` — without JS the words simply
+ * sit there (AgentReady AR-READ-01).
+ */
+export function Words({
+  text,
+  className,
+  step = 55,
+}: {
+  text: string;
+  className?: string;
+  step?: number;
+}) {
   return (
-    <p className={cx("kicker text-link", className)}>{children}</p>
+    <Reveal as="span" className={cx("reveal-steady block", className)}>
+      {text.split(" ").map((word, i) => (
+        <Fragment key={`${word}-${i}`}>
+          <span
+            className="word-band"
+            style={{ "--d": `${i * step}ms` } as React.CSSProperties}
+          >
+            {word}
+          </span>{" "}
+        </Fragment>
+      ))}
+    </Reveal>
   );
 }
 
-/** The launch headline. */
+/** The big headline — words rise in sequence. */
 export function Headline({
   children,
   className,
@@ -68,18 +97,13 @@ export function Headline({
   className?: string;
 }) {
   return (
-    <h2
-      className={cx(
-        "display-hero mt-2 text-[clamp(2.4rem,6vw,4.5rem)]",
-        className,
-      )}
-    >
-      {children}
+    <h2 className={cx("display-hero mt-3 text-[clamp(2.4rem,6vw,4.5rem)]", className)}>
+      {typeof children === "string" ? <Words text={children} /> : children}
     </h2>
   );
 }
 
-/** Supporting line under a headline — 21–28px soft grey. */
+/** Supporting line under a headline — 21–28px soft secondary. */
 export function Lead({
   children,
   className,
@@ -88,7 +112,7 @@ export function Lead({
   className?: string;
 }) {
   return (
-    <p className={cx("mt-4 text-[clamp(1.15rem,2.2vw,1.75rem)] leading-snug text-soft", className)}>
+    <p className={cx("mt-5 text-[clamp(1.15rem,2.2vw,1.75rem)] leading-snug text-soft", className)}>
       {children}
     </p>
   );
@@ -113,14 +137,14 @@ export function TextLink({
       target={external ? "_blank" : undefined}
       rel={external ? "noreferrer noopener" : undefined}
       className={cx(
-        "group inline-flex items-center gap-0.5 py-1 text-[17px] text-link",
+        "group inline-flex items-center gap-1 py-1 text-[17px] font-medium text-link transition-opacity hover:opacity-75",
         className,
       )}
     >
       {children}
       <span
         aria-hidden
-        className="transition-transform duration-300 group-hover:translate-x-0.5"
+        className="transition-transform duration-300 group-hover:translate-x-1"
       >
         {"›"}
       </span>
@@ -129,7 +153,7 @@ export function TextLink({
   );
 }
 
-/** Filled action pill. */
+/** Filled action pill — lifts on hover, springs on press. */
 export function Pill({
   href,
   children,
@@ -146,12 +170,12 @@ export function Pill({
   );
 }
 
-/** Quiet product chip — tech names, tags, focus areas. */
+/** Quiet mono chip — tech names, tags, focus areas. */
 export function Tag({ children, className }: { children: ReactNode; className?: string }) {
   return <span className={cx("tag", className)}>{children}</span>;
 }
 
-/** Big number with its label — the tech-spec readout. */
+/** Big number with its label — the spec readout. */
 export function Stat({ value, label }: { value: string; label: string }) {
   return (
     <div className="text-center">
@@ -161,7 +185,7 @@ export function Stat({ value, label }: { value: string; label: string }) {
   );
 }
 
-/** One row of a spec sheet: label left, value right. */
+/** One row of a spec sheet: mono label left, value right. */
 export function SpecRow({
   label,
   children,
@@ -170,8 +194,8 @@ export function SpecRow({
   children: ReactNode;
 }) {
   return (
-    <div className="grid gap-1 border-b py-5 last:border-b-0 hairline sm:grid-cols-[10rem_1fr] sm:gap-8">
-      <p className="text-[15px] font-semibold text-soft">{label}</p>
+    <div className="grid gap-1.5 border-b py-5 last:border-b-0 hairline sm:grid-cols-[11rem_1fr] sm:gap-8">
+      <p className="kicker pt-1 text-soft">{label}</p>
       <div className="text-[17px] leading-relaxed">{children}</div>
     </div>
   );

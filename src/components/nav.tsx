@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 import { Menu, X } from "lucide-react";
 import { useI18n, type Lang } from "./i18n";
 import { sections, site } from "@/content/site";
 import { cx } from "@/lib/utils";
 
 /**
- * The global bar: 44px, frosted, and tone-aware — dark glass over dark
- * stages, light glass over light ones, exactly like apple.com's long pages.
+ * The bar: 44px, warm frosted glass, tone-aware — dark glass over the dark
+ * stages, cream glass over the paper ones. The language switch runs inside a
+ * view transition so the whole page crossfades, Apple-style.
  */
 export function Nav() {
   const { d, lang, setLang } = useI18n();
@@ -46,6 +48,26 @@ export function Nav() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  const switchLang = (next: Lang) => {
+    const apply = () => flushSync(() => setLang(next));
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    if (
+      !reduced &&
+      typeof document !== "undefined" &&
+      "startViewTransition" in document
+    ) {
+      (
+        document as Document & {
+          startViewTransition: (update: () => void) => void;
+        }
+      ).startViewTransition(apply);
+      return;
+    }
+    apply();
+  };
+
   const langs: Lang[] = ["en", "es"];
 
   return (
@@ -53,8 +75,8 @@ export function Nav() {
       className={cx(
         "fixed inset-x-0 top-0 z-50 backdrop-blur-[20px] backdrop-saturate-[180%] transition-colors duration-300",
         barDark
-          ? "bg-[rgba(22,22,23,0.72)] text-[#f5f5f7]"
-          : "bg-[rgba(255,255,255,0.72)] text-ink",
+          ? "bg-[rgb(21 18 13 / 0.72)] text-cream"
+          : "bg-[rgb(243 238 227 / 0.72)] text-ink",
       )}
     >
       <nav
@@ -86,10 +108,10 @@ export function Nav() {
               <button
                 key={l}
                 type="button"
-                onClick={() => setLang(l)}
+                onClick={() => switchLang(l)}
                 aria-pressed={lang === l}
                 className={cx(
-                  "uppercase transition-opacity",
+                  "font-mono uppercase transition-opacity",
                   lang === l ? "opacity-100" : "opacity-50 hover:opacity-80",
                 )}
               >
@@ -99,7 +121,7 @@ export function Nav() {
           </div>
           <a
             href="#contact"
-            className="hidden rounded-full bg-sky px-3 py-1 text-white transition-opacity hover:opacity-85 sm:inline-flex"
+            className="hidden rounded-full bg-green px-3 py-1 font-medium text-void transition-transform hover:scale-[1.03] active:scale-[0.97] sm:inline-flex"
           >
             {d.nav.sections.contact}
           </a>
@@ -120,11 +142,11 @@ export function Nav() {
       </nav>
 
       {open ? (
-        <div className="fixed inset-0 top-11 bg-[rgba(0,0,0,0.92)] text-[#f5f5f7] backdrop-blur-[20px] backdrop-saturate-[180%] md:hidden">
+        <div className="fixed inset-0 top-11 bg-[rgb(21 18 13 / 0.94)] text-cream backdrop-blur-[20px] backdrop-saturate-[180%] md:hidden">
           <nav aria-label={d.nav.menu} className="px-6 py-6">
             <ul className="flex flex-col">
               {sections.map((s) => (
-                <li key={s.id} className="border-b border-white/10 last:border-b-0">
+                <li key={s.id} className="border-b border-cream/10 last:border-b-0">
                   <a
                     href={`#${s.id}`}
                     onClick={() => setOpen(false)}
